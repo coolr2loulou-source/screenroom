@@ -136,7 +136,7 @@ body.theater #next{position:fixed;left:50%;transform:translateX(-50%);bottom:cal
 <p class="attr">This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
 
 <script>
-const APP_VERSION = '15';
+const APP_VERSION = '16';
 const IMG = 'https://image.tmdb.org/t/p/';
 const app = document.getElementById('app');
 const q = document.getElementById('q');
@@ -382,6 +382,7 @@ function bindBackup() {
 }
 
 function listView() {
+  if (!key) return showSetup();
   backBtn.style.display = 'none'; clearHash();
   const sec = (title, l, extra = '') => l.length ? `<div class="row"><div class="hd"><h2 class="sec">${title}</h2>${extra}</div><div class="grid">` +
     l.filter(x => x.poster).map(x => `<div class="card" tabindex="0" data-type="${x.type}" data-id="${x.id}">
@@ -400,7 +401,7 @@ let timer;
 q.addEventListener('input', () => {
   clearTimeout(timer);
   const v = q.value.trim();
-  if (!key) return;
+  if (!key) return showSetup();
   if (!v) return home();
   timer = setTimeout(async () => {
     try {
@@ -419,6 +420,7 @@ function embedUrl(type, id, s, e, t) {
 }
 
 async function watch(type, id, res = {}) {
+  if (!key) return showSetup();
   clearInterval(nextTimer);
   app.innerHTML = '<div class="player sk"></div>';
   try {
@@ -476,7 +478,7 @@ function showDownloadModal(type, id, s, e, name) {
   if (document.getElementById('dlm')) return;
   const cleanName = name.replace(/[<>:"/\|?*]+/g, '').trim() + (type === 'tv' ? `_S${s}E${e}` : '');
   const filename = `${cleanName}.mp4`;
-  const cmd = `$videoUrl = "PUT_YOUR_M3U8_URL_HERE"; $exe = "$HOME\yt-dlp.exe"; if(!(Test-Path $exe)){ Write-Host "Downloading yt-dlp..." -ForegroundColor Cyan; Invoke-WebRequest "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -OutFile $exe }; try { & $exe --referer "https://vidy.st/" --add-header "Origin: https://vidy.st" --hls-prefer-native -o "${filename}" $videoUrl } catch { Write-Host "`n[!] Download error: If you get HTTP Error 502 Bad Gateway or 403 Forbidden, your .m3u8 token expired. Refresh the video page and regrab a fresh stream link!" -ForegroundColor Red }`;
+  const cmd = `$videoUrl = "PUT_YOUR_M3U8_URL_HERE"; $exe = "$HOME\yt-dlp.exe"; if(!(Test-Path $exe)){ Write-Host "Downloading yt-dlp..." -ForegroundColor Cyan; Invoke-WebRequest "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -OutFile $exe }; try { & $exe --referer "https://vidy.st/" --add-header "Origin: https://vidy.st" --hls-prefer-native -o "${filename}" $videoUrl } catch { Write-Host "\`n[!] Download error: If you get HTTP Error 502 Bad Gateway or 403 Forbidden, your .m3u8 token expired. Refresh the video page and regrab a fresh stream link!" -ForegroundColor Red }`;
 
   const m = document.createElement('div');
   m.id = 'dlm'; m.className = 'modal';
@@ -586,6 +588,7 @@ function showNext(s, e) {
 
 // Newest entry first. Add a new entry at the top for every update.
 const PATCHNOTES = [
+  { v: '16', c: ['Setup Guard Fix: Navigation tabs, search, and title views now check for missing TMDB API key and redirect to setup screen instead of rendering blank.', 'Escape string fix in modal template string.'] },
   { v: '15', c: ['PowerShell Bootstrap & Error Guard: Command template now includes top-level $videoUrl variable and auto-fetches yt-dlp.exe to user folder.', 'Added error handling to PowerShell output explaining 502/403 token expiration with instructions to regrab a fresh link.', 'Modal UI updated with clear troubleshooting section for HTTP errors.'] },
   { v: '14', c: ['Phase 1 & 2 integration: Download modal now generates ready-to-run yt-dlp commands with clean filenames and native HLS flags.', 'Added a built-in yt-dlp installation guide and download link.', 'Added Phase 2 recommendation for 1-click .m3u8 stream sniffing browser extensions (like HLS Downloader).'] },
   { v: '13', c: ['Added a Download button on movie and series pages to generate and copy a ready-to-use yt-dlp command for offline downloading.'] },
