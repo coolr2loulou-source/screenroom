@@ -58,7 +58,7 @@ main{padding:20px max(20px,env(safe-area-inset-right)) 40px max(20px,env(safe-ar
 #lang{padding:9px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--text);font-size:15px;margin:0 0 12px}
 .attr{text-align:center;color:var(--muted);font-size:12px;padding:0 20px calc(24px + env(safe-area-inset-bottom))}
 .bk{display:flex;gap:10px;flex-wrap:wrap}
-.hd{display:flex;justify-between:space-between;align-items:center;margin-bottom:12px}
+.hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .hd h2{margin:0}
 #fav.on{color:var(--accent);border-color:var(--accent)}
 .prog i{display:block;height:100%;background:var(--accent)}
@@ -136,7 +136,7 @@ body.theater #next{position:fixed;left:50%;transform:translateX(-50%);bottom:cal
 <p class="attr">This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
 
 <script>
-const APP_VERSION = '13';
+const APP_VERSION = '14';
 const IMG = 'https://image.tmdb.org/t/p/';
 const app = document.getElementById('app');
 const q = document.getElementById('q');
@@ -474,26 +474,54 @@ async function watch(type, id, res = {}) {
 
 function showDownloadModal(type, id, s, e, name) {
   if (document.getElementById('dlm')) return;
-  const embedUrlStr = type === 'movie' 
-    ? `https://vidy.st/movie/${id}` 
-    : `https://vidy.st/tv/${id}/${s}/${e}`;
-  const cmd = `yt-dlp "${embedUrlStr}"`;
+  const cleanName = name.replace(/[<>:"/\|?*]+/g, '').trim() + (type === 'tv' ? `_S${s}E${e}` : '');
+  const filename = `${cleanName}.mp4`;
+  const embedUrlStr = type === 'movie' ? `https://vidy.st/movie/${id}` : `https://vidy.st/tv/${id}/${s}/${e}`;
+  const cmd = `yt-dlp --referer "https://vidy.st/" --add-header "Origin: https://vidy.st" --hls-prefer-native -o "${filename}" "${embedUrlStr}"`;
+
   const m = document.createElement('div');
   m.id = 'dlm'; m.className = 'modal';
-  m.innerHTML = `<div class="box" role="dialog" aria-label="Download with yt-dlp">
-    <h2 class="sec">Download with yt-dlp</h2>
+  m.innerHTML = `<div class="box" role="dialog" aria-label="Download options">
+    <h2 class="sec">Download Title</h2>
     <p class="meta">Target: <b>${esc(name)}</b> ${type === 'tv' ? `(S${s} E${e})` : ''}</p>
-    <p class="meta">Copy this command to run in your terminal where yt-dlp is installed:</p>
-    <textarea readonly style="width:100%;height:70px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px;font-family:monospace;font-size:14px;resize:none;margin-bottom:12px">${esc(cmd)}</textarea>
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <button id="dlcopy">Copy command</button>
+    
+    <div style="margin-bottom:14px">
+      <p class="meta" style="margin-bottom:6px"><b>1. Run with yt-dlp</b> (Phase 1):</p>
+      <textarea readonly style="width:100%;height:65px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font-family:monospace;font-size:13px;resize:none">${esc(cmd)}</textarea>
+      <button id="dlcopy" style="margin-top:8px">Copy command</button>
+    </div>
+
+    <div style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:14px;font-size:14px">
+      <p style="margin:0 0 6px;color:var(--accent);font-weight:600">💡 Don't have yt-dlp or need setup?</p>
+      <p style="margin:0 0 8px;color:var(--muted)">Download the latest executable and add it to your system PATH.</p>
+      <a href="https://github.com/yt-dlp/yt-dlp/releases/latest" target="_blank" style="color:var(--accent);text-decoration:underline">Get yt-dlp</a> | 
+      <a href="#" id="toggle-guide" style="color:var(--accent);text-decoration:underline;margin-left:6px">View quick guide</a>
+      <div id="dl-guide" style="display:none;margin-top:10px;color:var(--muted);font-size:13px;line-height:1.4">
+        <b>Quick Installation & Path Guide:</b><br>
+        1. Download <code>yt-dlp.exe</code> (Windows) or binary (Linux/Mac) from the official GitHub releases.<br>
+        2. Place it in a folder of your choice (e.g., <code>C:\yt-dlp</code> or <code>~/.local/bin</code>).<br>
+        3. Add that folder to your system <b>PATH</b> environment variable so you can run <code>yt-dlp</code> from any terminal window!<br>
+        4. If your stream uses special segments, the command above includes <code>--hls-prefer-native</code> automatically.
+      </div>
+    </div>
+
+    <div style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:16px;font-size:14px">
+      <p style="margin:0 0 6px;color:var(--accent);font-weight:600">⚡ Want 1-click .m3u8 link sniffing? (Phase 2)</p>
+      <p style="margin:0 0 8px;color:var(--muted)">Install a browser extension like <b>HLS Downloader</b> or <b>Simple Media Sniffer</b>. When playing the video inside Screenroom, the extension will automatically detect and list the direct stream link without opening Developer Tools!</p>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end">
       <button id="dlclose">Close</button>
     </div>
-    <p style="color:var(--muted);font-size:12px;margin-top:12px">Note: Because the video plays inside a cross-origin iframe, browsers restrict direct client-side .m3u8 sniffing. Passing the embed URL directly to yt-dlp allows it to resolve and download the stream.</p>
   </div>`;
   document.body.appendChild(m);
   const close = () => m.remove();
   document.getElementById('dlclose').onclick = close;
+  document.getElementById('toggle-guide').onclick = (ev) => {
+    ev.preventDefault();
+    const g = document.getElementById('dl-guide');
+    g.style.display = g.style.display === 'none' ? 'block' : 'none';
+  };
   document.getElementById('dlcopy').onclick = async () => {
     try {
       await navigator.clipboard.writeText(cmd);
@@ -570,6 +598,7 @@ function showNext(s, e) {
 
 // Newest entry first. Add a new entry at the top for every update.
 const PATCHNOTES = [
+  { v: '14', c: ['Phase 1 & 2 integration: Download modal now generates ready-to-run yt-dlp commands with clean filenames and native HLS flags.', 'Added a built-in yt-dlp installation guide and download link.', 'Added Phase 2 recommendation for 1-click .m3u8 stream sniffing browser extensions (like HLS Downloader).'] },
   { v: '13', c: ['Added a Download button on movie and series pages to generate and copy a ready-to-use yt-dlp command for offline downloading.'] },
   { v: '12', c: ['Theater mode: the ✕ now fades out after 3 seconds. Bring it back by tapping the top-left corner, or swipe back to leave.', 'New “Next ▶” button on series pages and in theater mode.', 'Faster: results are cached for a few minutes, posters start loading on touch, and initial load runs in parallel.'] },
   { v: '11', c: ['Design pass: posters lift slightly on hover, pages fade in smoothly.', 'Title pages now show the runtime (or number of seasons) and genre tags.'] },
@@ -640,7 +669,7 @@ document.addEventListener('keydown', e => {
 });
 
 document.getElementById('texit').onclick = () => {
-  if (document.body.classList.contains('theater')) return showTheaterUI();
+  if (document.body.classList.contains('thide')) return showTheaterUI();
   if (history.state && history.state.theater) history.back(); else exitTheater();
 };
 document.getElementById('tnext').onclick = () => { showTheaterUI(); nextEpisodeNow(); };
