@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Screenroom</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="theme-color" content="#141922">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Screenroom">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+:root{--bg:#141922;--surface:#1e2532;--line:#2c3547;--text:#ece9e2;--muted:#8d97a8;--accent:#ff7a45}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;padding:calc(12px + env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) 10px max(20px,env(safe-area-inset-left));border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5}
+.logo{font:700 22px Georgia,serif;cursor:pointer;white-space:nowrap}
+.logo span{color:var(--accent)}
+#q{flex:1 1 180px;min-width:0;max-width:520px;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--text);font-size:16px}
+#back{display:none;padding:8px 12px}
+nav{display:flex;gap:6px}
+nav button{border-color:transparent;background:transparent;color:var(--muted)}
+nav button.on{color:var(--text);border-color:var(--accent)}
+#q:focus,button:focus-visible,.card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+main{padding:20px max(20px,env(safe-area-inset-right)) 40px max(20px,env(safe-area-inset-left));max-width:1200px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px}
+.card{background:var(--surface);border-radius:8px;overflow:hidden;cursor:pointer;border:1px solid var(--line)}
+.card:hover{border-color:var(--accent)}
+.card img{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:#222a39}
+.card div{padding:8px 10px;font-size:14px}
+.card small{color:var(--muted);display:block}
+.card{position:relative}
+.card .prog{height:3px;padding:0;background:var(--line)}
+.x{position:absolute;top:6px;right:6px;width:30px;height:30px;padding:0;border-radius:50%;background:rgba(20,25,34,.85);font-size:18px;line-height:1}
+.filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.filters select,.filters input{padding:9px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--text);font-size:15px;min-width:0}
+.filters input{width:100px}
+.grid.sm{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}
+.sim{margin-top:24px}
+.sk{background:var(--surface);border-radius:8px;aspect-ratio:2/3;animation:pulse 1.2s ease-in-out infinite}
+.player.sk{aspect-ratio:16/9;border-radius:10px;background:var(--surface)}
+@keyframes pulse{50%{opacity:.5}}
+@media (prefers-reduced-motion:reduce){.sk{animation:none}}
+.empty{text-align:center;padding:48px 0}
+.empty i{display:block;width:64px;height:92px;margin:0 auto 16px;border:2px dashed var(--line);border-radius:8px}
+.hint{display:none;text-align:center;color:var(--muted);font-size:13px;padding:0 0 24px}
+@media (hover:hover) and (pointer:fine){.hint{display:block}}
+.upd{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;background:var(--accent);color:#141922;font-weight:600;padding:calc(8px + env(safe-area-inset-top)) 16px 8px;text-align:center}
+.upd button{background:#141922;color:var(--text);border:0}
+.nextup{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--accent);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.nextup span{flex:1 1 160px}
+.bk{display:flex;gap:10px;flex-wrap:wrap}
+.hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.hd h2{margin:0}
+#fav.on{color:var(--accent);border-color:var(--accent)}
+.prog i{display:block;height:100%;background:var(--accent)}
+.msg{color:var(--muted);padding:40px 0;text-align:center}
+.player{aspect-ratio:16/9;width:100%;background:#000;border-radius:10px;overflow:hidden}
+.player iframe{width:100%;height:100%;border:0}
+button{background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 14px;font-size:15px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+h2{margin:18px 0 6px;font:700 26px Georgia,serif}
+h2.sec{margin:0 0 12px;font-size:21px}
+.row{margin-bottom:28px}
+.meta{color:var(--muted);margin:0 0 10px}
+.ep{display:flex;gap:10px;align-items:center;margin:12px 0;flex-wrap:wrap}
+.ep input{width:70px;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--text);font-size:15px}
+.setup{max-width:480px;margin:60px auto;text-align:center}
+.setup input{width:100%;padding:12px;margin:14px 0;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--text)}
+@media (max-width:600px){nav{order:3;width:100%}}
+/* Landscape phones: compact header, player beside the details */
+@media (orientation:landscape) and (max-height:600px){
+  header{position:static;padding-top:6px;padding-bottom:6px}
+  .logo{font-size:18px}
+  nav{order:0;width:auto}
+  main{padding-top:12px}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px}
+  .watch{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:16px;align-items:start}
+  .watch .player{position:sticky;top:8px}
+  .watch h2{margin-top:0;font-size:20px}
+  .icol{max-height:calc(100vh - 80px);overflow:auto}
+}
+</style>
+</head>
+<body>
+<header>
+  <button id="back" aria-label="Back">←</button>
+  <div class="logo" id="home">Screen<span>room</span></div>
+  <nav id="nav">
+    <button data-tab="all" class="on">Home</button>
+    <button data-tab="movie">Movies</button>
+    <button data-tab="tv">Series</button>
+    <button data-tab="list">My list</button>
+  </nav>
+  <input id="q" type="search" placeholder="Search a movie or show…" title="Press / to search" autocomplete="off">
+</header>
+<main id="app"></main>
+<p class="hint">Press / to search, F for fullscreen, Esc to go back.</p>
+
+<script>
+const APP_VERSION = '7';
+const IMG = 'https://image.tmdb.org/t/p/';
+const app = document.getElementById('app');
+const q = document.getElementById('q');
+const backBtn = document.getElementById('back');
+let key = '', tab = 'all', current = null, lastSave = 0, filt = { genre: '', year: '', sort: 'popular' }, genres = {}, nextTimer = null, lastCheck = 0;
+try { key = localStorage.getItem('tmdb_key') || ''; } catch (e) {}
+
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const api = async (path, params = '') => {
+  const r = await fetch(`https://api.themoviedb.org/3${path}?api_key=${key}&language=en-US${params}`);
+  if (!r.ok) throw new Error(r.status === 401 ? 'Invalid TMDB API key.' : 'TMDB error ' + r.status);
+  return r.json();
+};
+const skel = (n = 12) => '<div class="grid">' + '<div class="sk"></div>'.repeat(n) + '</div>';
+const emptyState = (t, h) => `<div class="empty"><i></i><h2 class="sec">${t}</h2><p class="meta">${h}</p></div>`;
+const fmt = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+/* ---- Continue watching (stored in this browser) ---- */
+const getCW = () => { try { return JSON.parse(localStorage.getItem('cw') || '[]'); } catch (e) { return []; } };
+const setCW = l => { try { localStorage.setItem('cw', JSON.stringify(l.slice(0, 20))); } catch (e) {} };
+function saveProgress(t, dur, done) {
+  if (!current) return;
+  let l = getCW().filter(x => !(x.type === current.type && x.id === current.id));
+  if (!done && t > 10 && dur > 0 && t / dur < 0.95) l.unshift({ ...current, time: Math.floor(t), dur: Math.floor(dur) });
+  else if (!done) l = getCW();
+  setCW(l);
+}
+window.addEventListener('message', ev => {
+  const f = document.getElementById('frame');
+  if (!f || ev.source !== f.contentWindow) return;
+  let p = ev.data;
+  if (typeof p === 'string') { try { p = JSON.parse(p); } catch (e) { return; } }
+  if (!p || !p.event) return;
+  const now = Date.now();
+  if (p.event === 'ended') { saveProgress(0, 0, true); nextUp(); }
+  else if (p.event === 'pause' || (p.event === 'timeupdate' && now - lastSave > 5000)) {
+    lastSave = now; saveProgress(p.currentTime || 0, p.duration || 0, false);
+  }
+});
+
+/* ---- My list + history ---- */
+const lsGet = k => { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch (e) { return []; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+const same = (a, type, id) => a.type === type && String(a.id) === String(id);
+const isFav = (type, id) => lsGet('fav').some(x => same(x, type, id));
+function toggleFav(it) {
+  let l = lsGet('fav'); const has = l.some(x => same(x, it.type, it.id));
+  l = has ? l.filter(x => !same(x, it.type, it.id)) : [{ type: it.type, id: it.id, name: it.name, poster: it.poster }, ...l];
+  lsSet('fav', l); return !has;
+}
+function addHist(it) {
+  const l = lsGet('hist').filter(x => !same(x, it.type, it.id));
+  l.unshift({ type: it.type, id: it.id, name: it.name, poster: it.poster });
+  lsSet('hist', l.slice(0, 40));
+}
+
+/* ---- Views ---- */
+function showSetup(err) {
+  backBtn.style.display = 'none';
+  app.innerHTML = `<div class="setup">
+    <h2>Add your TMDB key</h2>
+    <p class="meta">Screenroom uses TMDB for search and posters. Get a free API key (v3) at themoviedb.org → Settings → API.</p>
+    ${err ? `<p style="color:#ff8a8a">${esc(err)}</p>` : ''}
+    <input id="k" placeholder="Paste your TMDB API key">
+    <button id="save">Save key</button>
+    <p class="meta">Already have a backup from another device?</p>
+    <button id="imp">Import backup</button><input id="impf" type="file" accept=".json,application/json" hidden></div>`;
+  bindBackup();
+  document.getElementById('save').onclick = () => {
+    key = document.getElementById('k').value.trim();
+    try { localStorage.setItem('tmdb_key', key); } catch (e) {}
+    home();
+  };
+}
+
+async function home() {
+  if (!key) return showSetup();
+  q.value = '';
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  if (tab === 'list') return listView();
+  app.innerHTML = skel();
+  try {
+    const mt = tab === 'movie' || tab === 'tv';
+    if (mt && !genres[tab]) { try { genres[tab] = (await api(`/genre/${tab}/list`)).genres; } catch (e) { genres[tab] = []; } }
+    const filtered = mt && (filt.genre || filt.year || filt.sort !== 'popular');
+    const sorts = { popular: 'popularity.desc', top: 'vote_average.desc', new: tab === 'movie' ? 'primary_release_date.desc' : 'first_air_date.desc' };
+    let pr = '&sort_by=' + sorts[filt.sort] + '&vote_count.gte=' + (filt.sort === 'top' ? 300 : filt.sort === 'new' ? 5 : 20);
+    if (filt.sort === 'new') pr += (tab === 'movie' ? '&primary_release_date.lte=' : '&first_air_date.lte=') + new Date().toISOString().slice(0, 10);
+    if (filt.genre) pr += '&with_genres=' + filt.genre;
+    if (filt.year) pr += (tab === 'movie' ? '&primary_release_year=' : '&first_air_date_year=') + filt.year;
+    const d = filtered ? await api(`/discover/${tab}`, pr) : await api(`/trending/${tab}/week`);
+    const names = { all: 'Trending this week', movie: 'Trending movies', tv: 'Trending series' };
+    render(d.results, filtered ? 'Filtered results' : names[tab], true);
+  } catch (e) { showSetup(e.message); }
+}
+
+function cwRow() {
+  const l = getCW().filter(x => tab === 'all' || x.type === tab);
+  if (!l.length) return '';
+  return `<div class="row"><h2 class="sec">Continue watching</h2><div class="grid">` + l.map(x => `
+    <div class="card" tabindex="0" data-type="${x.type}" data-id="${x.id}" data-s="${x.s}" data-e="${x.e}" data-t="${x.time}">
+      <button class="x" aria-label="Remove from continue watching">×</button>
+      <img loading="lazy" src="${IMG}w342${x.poster}" alt="${esc(x.name)}">
+      <div class="prog"><i style="width:${Math.round(100 * x.time / x.dur)}%"></i></div>
+      <div>${esc(x.name)}<small>${x.type === 'tv' ? `S${x.s} E${x.e} · ` : ''}${fmt(x.time)}</small></div></div>`).join('') + '</div></div>';
+}
+
+function render(items, title, withCW) {
+  backBtn.style.display = 'none';
+  items = items.filter(i => i.media_type !== 'person' && i.poster_path);
+  const cw = withCW ? cwRow() : '';
+  const bar = withCW ? filterBar() : '';
+  if (!items.length && !cw) { app.innerHTML = bar + emptyState('No titles found', 'Try a different spelling, or clear the filters.'); bindFilters(); return; }
+  app.innerHTML = bar + cw + `<div class="hd"><h2 class="sec">${esc(title)}</h2>${withCW ? '<button id="sur">Surprise me</button>' : ''}</div><div class="grid">` + items.map(i => {
+    const type = i.media_type || ((tab === 'movie' || tab === 'tv') ? tab : (i.title ? 'movie' : 'tv'));
+    const name = i.title || i.name;
+    const year = (i.release_date || i.first_air_date || '').slice(0, 4);
+    return `<div class="card" tabindex="0" data-type="${type}" data-id="${i.id}">
+      <img loading="lazy" src="${IMG}w342${i.poster_path}" alt="${esc(name)}">
+      <div>${esc(name)}<small>${type === 'tv' ? 'Series' : 'Movie'}${year ? ' · ' + year : ''}</small></div></div>`;
+  }).join('') + '</div>';
+  bindCards();
+  bindFilters();
+  const sb = document.getElementById('sur'); if (sb) sb.onclick = surprise;
+}
+
+async function surprise() {
+  const sb = document.getElementById('sur');
+  if (sb) { sb.disabled = true; sb.textContent = 'Picking…'; }
+  try {
+    const type = (tab === 'movie' || tab === 'tv') ? tab : (Math.random() < 0.5 ? 'movie' : 'tv');
+    let pr = '&sort_by=popularity.desc&vote_count.gte=500&vote_average.gte=6.5&page=' + (1 + Math.floor(Math.random() * 10));
+    if (tab === type && filt.genre) pr += '&with_genres=' + filt.genre;
+    if (tab === type && filt.year) pr += (type === 'movie' ? '&primary_release_year=' : '&first_air_date_year=') + filt.year;
+    const l = (await api(`/discover/${type}`, pr)).results.filter(i => i.poster_path);
+    if (!l.length) throw new Error('none');
+    watch(type, l[Math.floor(Math.random() * l.length)].id);
+  } catch (e) { if (sb) { sb.disabled = false; sb.textContent = 'Surprise me'; } }
+}
+
+function filterBar() {
+  if (tab !== 'movie' && tab !== 'tv') return '';
+  const sortOpts = [['popular', 'Popular'], ['top', 'Top rated'], ['new', 'Newest']].map(([v, n]) => `<option value="${v}"${filt.sort === v ? ' selected' : ''}>${n}</option>`).join('');
+  const opts = (genres[tab] || []).map(g => `<option value="${g.id}"${String(g.id) === filt.genre ? ' selected' : ''}>${esc(g.name)}</option>`).join('');
+  return `<div class="filters"><select id="fg" aria-label="Genre"><option value="">All genres</option>${opts}</select>
+    <select id="fs" aria-label="Sort">${sortOpts}</select>
+    <input id="fy" type="number" min="1900" max="2100" placeholder="Year" value="${esc(filt.year)}" aria-label="Year">
+    ${filt.genre || filt.year || filt.sort !== 'popular' ? '<button id="fc">Clear</button>' : ''}</div>`;
+}
+
+function bindFilters() {
+  const g = document.getElementById('fg'); if (!g) return;
+  g.onchange = () => { filt.genre = g.value; home(); };
+  document.getElementById('fs').onchange = ev => { filt.sort = ev.target.value; home(); };
+  document.getElementById('fy').onchange = ev => { filt.year = ev.target.value.trim(); home(); };
+  const c = document.getElementById('fc'); if (c) c.onclick = () => { filt = { genre: '', year: '', sort: 'popular' }; home(); };
+}
+
+function bindCards() {
+  app.querySelectorAll('.card').forEach(c => {
+    const go = () => watch(c.dataset.type, c.dataset.id, { s: +c.dataset.s || 1, e: +c.dataset.e || 1, t: +c.dataset.t || 0 });
+    c.onclick = go;
+    c.onkeydown = e => { if (e.key === 'Enter' && e.target === c) go(); };
+  });
+  app.querySelectorAll('.x').forEach(b => b.onclick = ev => {
+    ev.stopPropagation();
+    const c = b.closest('.card'), row = c.closest('.row');
+    setCW(getCW().filter(x => !same(x, c.dataset.type, c.dataset.id)));
+    c.remove();
+    if (!row.querySelector('.card')) row.remove();
+  });
+}
+
+function backupBox() {
+  return `<div class="row"><h2 class="sec">Backup</h2>
+    <p class="meta">Move your list, history and progress to another device. The file also contains your TMDB key, so keep it private.</p>
+    <div class="bk"><button id="exp">Export backup</button><button id="imp">Import backup</button></div>
+    <input id="impf" type="file" accept=".json,application/json" hidden>
+    <p id="bkmsg" class="meta"></p></div>
+    <div class="row"><h2 class="sec">App</h2><p class="meta">Version ${APP_VERSION}. <span id="upmsg"></span></p><button id="upchk">Check for updates</button></div>`;
+}
+
+function bindBackup() {
+  const exp = document.getElementById('exp'), imp = document.getElementById('imp'), f = document.getElementById('impf');
+  const uc = document.getElementById('upchk'); if (uc) uc.onclick = () => checkUpdate(true);
+  const say = t => { const m = document.getElementById('bkmsg'); if (m) m.textContent = t; };
+  if (exp) exp.onclick = () => {
+    const data = { app: 'screenroom', v: 1, key, fav: lsGet('fav'), hist: lsGet('hist'), cw: getCW() };
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
+    a.download = 'screenroom-backup.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    say('Backup created. Check your downloads.');
+  };
+  if (imp && f) {
+    imp.onclick = () => f.click();
+    f.onchange = async () => {
+      try {
+        const d = JSON.parse(await f.files[0].text());
+        if (d.app !== 'screenroom') throw new Error('bad file');
+        const merge = (k, inc, prefer) => {
+          const out = lsGet(k);
+          (Array.isArray(inc) ? inc : []).filter(x => x && x.type && x.id).forEach(a => {
+            const i = out.findIndex(c => same(c, a.type, a.id));
+            if (i < 0) out.push(a); else if (prefer) out[i] = a;
+          });
+          lsSet(k, out);
+        };
+        merge('fav', d.fav, false); merge('hist', d.hist, false); merge('cw', d.cw, true);
+        if (d.key && !key) { key = String(d.key); try { localStorage.setItem('tmdb_key', key); } catch (e) {} }
+        if (tab === 'list') listView(); else if (key) home();
+        say('Backup imported.');
+      } catch (e) { say('That file is not a Screenroom backup.'); }
+      f.value = '';
+    };
+  }
+}
+
+function listView() {
+  backBtn.style.display = 'none';
+  const sec = (title, l, extra = '') => l.length ? `<div class="row"><div class="hd"><h2 class="sec">${title}</h2>${extra}</div><div class="grid">` +
+    l.filter(x => x.poster).map(x => `<div class="card" tabindex="0" data-type="${x.type}" data-id="${x.id}">
+      <img loading="lazy" src="${IMG}w342${x.poster}" alt="${esc(x.name)}">
+      <div>${esc(x.name)}<small>${x.type === 'tv' ? 'Series' : 'Movie'}</small></div></div>`).join('') + '</div></div>' : '';
+  const body = sec('Favorites', lsGet('fav')) + sec('History', lsGet('hist'), '<button id="clr">Clear history</button>')
+    || emptyState('Your list is empty', 'Open a title and tap “♡ Add to my list” to keep it here.');
+  app.innerHTML = body + backupBox();
+  bindCards();
+  bindBackup();
+  const clr = document.getElementById('clr');
+  if (clr) clr.onclick = () => { lsSet('hist', []); listView(); };
+}
+
+let timer;
+q.addEventListener('input', () => {
+  clearTimeout(timer);
+  const v = q.value.trim();
+  if (!key) return;
+  if (!v) return home();
+  timer = setTimeout(async () => {
+    try {
+      const ep = (tab === 'all' || tab === 'list') ? 'multi' : tab;
+      const d = await api('/search/' + ep, '&query=' + encodeURIComponent(v));
+      render(d.results, `Results for “${v}”`, false);
+    } catch (e) { app.innerHTML = `<p class="msg">${esc(e.message)}</p>`; }
+  }, 350);
+});
+
+function embedUrl(type, id, s, e, t) {
+  const prog = t > 0 ? `&progress=${t}` : '';
+  return type === 'movie'
+    ? `https://vidy.st/movie/${id}?color=FF7A45${prog}`
+    : `https://vidy.st/tv/${id}/${s}/${e}?color=FF7A45&nextEpisode=true&episodeSelector=true${prog}`;
+}
+
+async function watch(type, id, res = {}) {
+  clearInterval(nextTimer);
+  app.innerHTML = '<div class="player sk"></div>';
+  try {
+    const d = await api(`/${type}/${id}`);
+    const name = d.title || d.name;
+    const year = (d.release_date || d.first_air_date || '').slice(0, 4);
+    const s = res.s || 1, e = res.e || 1, t = res.t || 0;
+    current = { type, id, name, poster: d.poster_path, s, e, seasons: d.number_of_seasons };
+    addHist(current);
+    backBtn.style.display = 'block';
+    app.innerHTML = `<div class="watch">
+      <div class="player"><iframe id="frame" allowfullscreen
+        allow="encrypted-media; autoplay *; fullscreen *"
+        src="${embedUrl(type, id, s, e, t)}"></iframe></div>
+      <div class="icol">
+        <div id="next"></div>
+        <h2>${esc(name)}</h2>
+        <p class="meta">${type === 'tv' ? 'Series' : 'Movie'}${year ? ' · ' + year : ''}${d.vote_average ? ' · ★ ' + d.vote_average.toFixed(1) : ''}</p>
+        <button id="fav" class="${isFav(type, id) ? 'on' : ''}">${isFav(type, id) ? '♥ In my list' : '♡ Add to my list'}</button>
+        ${type === 'tv' ? `<div class="ep">Season <input id="s" type="number" min="1" value="${s}"> Episode <input id="e" type="number" min="1" value="${e}"> <button id="go">Play</button></div>` : ''}
+        <p>${esc(d.overview)}</p>
+        <div class="sim" id="sim"></div>
+      </div></div>`;
+    loadSimilar(type, id);
+    document.getElementById('fav').onclick = ev => {
+      const on = toggleFav(current);
+      ev.target.classList.toggle('on', on);
+      ev.target.textContent = on ? '♥ In my list' : '♡ Add to my list';
+    };
+    if (type === 'tv') document.getElementById('go').onclick = () => {
+      current.s = +document.getElementById('s').value || 1;
+      current.e = +document.getElementById('e').value || 1;
+      document.getElementById('frame').src = embedUrl(type, id, current.s, current.e, 0);
+    };
+  } catch (err) { app.innerHTML = `<p class="msg">${esc(err.message)}</p>`; }
+}
+
+function playEpisode(s, e) {
+  clearInterval(nextTimer);
+  const nx = document.getElementById('next'); if (nx) nx.innerHTML = '';
+  current.s = s; current.e = e;
+  const si = document.getElementById('s'), ei = document.getElementById('e');
+  if (si) si.value = s;
+  if (ei) ei.value = e;
+  document.getElementById('frame').src = embedUrl('tv', current.id, s, e, 0);
+}
+
+async function nextUp() {
+  if (!current || current.type !== 'tv') return;
+  try {
+    const sd = await api(`/tv/${current.id}/season/${current.s}`);
+    let s = current.s, e = current.e + 1;
+    if (e > sd.episodes.length) { s++; e = 1; if (current.seasons && s > current.seasons) return; }
+    showNext(s, e);
+  } catch (err) {}
+}
+
+function showNext(s, e) {
+  const box = document.getElementById('next'); if (!box) return;
+  let n = 8;
+  clearInterval(nextTimer);
+  const paint = () => {
+    box.innerHTML = `<div class="nextup"><span>Next up: S${s} E${e}. Playing in ${n}s</span><button id="nplay">Play now</button><button id="ncancel">Cancel</button></div>`;
+    document.getElementById('nplay').onclick = () => playEpisode(s, e);
+    document.getElementById('ncancel').onclick = () => { clearInterval(nextTimer); box.innerHTML = ''; };
+  };
+  paint();
+  nextTimer = setInterval(() => {
+    if (!current || !document.getElementById('next')) return clearInterval(nextTimer);
+    if (--n <= 0) return playEpisode(s, e);
+    paint();
+  }, 1000);
+}
+
+async function checkUpdate(manual) {
+  const say = t => { const m = document.getElementById('upmsg'); if (m) m.textContent = t; };
+  if (location.protocol === 'file:') { if (manual) say('Updates only work on the hosted version.'); return; }
+  lastCheck = Date.now();
+  try {
+    const r = await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' });
+    const m = (await r.text()).match(/APP_VERSION = '(\d+)'/);
+    if (m && m[1] !== APP_VERSION) { if (manual) say('New version found.'); return showUpdate(m[1]); }
+    if (manual) say('You have the latest version.');
+  } catch (e) { if (manual) say('Could not check. Are you online?'); }
+}
+
+function showUpdate(v) {
+  if (document.getElementById('upd')) return;
+  const b = document.createElement('div');
+  b.id = 'upd'; b.className = 'upd';
+  b.innerHTML = 'A new version of Screenroom is ready. <button id="uprel">Update now</button>';
+  document.body.insertBefore(b, document.body.firstChild);
+  document.getElementById('uprel').onclick = () => { location.href = location.pathname + '?v=' + v; };
+}
+
+async function loadSimilar(type, id) {
+  try {
+    const d = await api(`/${type}/${id}/recommendations`);
+    const l = d.results.filter(i => i.poster_path).slice(0, 8);
+    const box = document.getElementById('sim');
+    if (!l.length || !box || !current || String(current.id) !== String(id)) return;
+    box.innerHTML = '<h2 class="sec">Similar titles</h2><div class="grid sm">' + l.map(i => `<div class="card" tabindex="0" data-type="${type}" data-id="${i.id}">
+      <img loading="lazy" src="${IMG}w342${i.poster_path}" alt="${esc(i.title || i.name)}">
+      <div>${esc(i.title || i.name)}</div></div>`).join('') + '</div>';
+    bindCards();
+  } catch (e) {}
+}
+
+document.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const typing = /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName);
+  if (e.key === '/' && !typing) { e.preventDefault(); q.focus(); q.select(); }
+  else if (e.key === 'Escape') { if (typing) document.activeElement.blur(); else if (current) backBtn.click(); }
+  else if (e.key.toLowerCase() === 'f' && !typing) {
+    const pl = document.querySelector('.player');
+    if (!pl) return;
+    if (document.fullscreenElement) document.exitFullscreen(); else if (pl.requestFullscreen) pl.requestFullscreen();
+  }
+});
+
+backBtn.onclick = () => { clearInterval(nextTimer); current = null; q.value.trim() ? q.dispatchEvent(new Event('input')) : home(); };
+document.getElementById('home').onclick = () => { current = null; tab = 'all'; home(); };
+document.querySelectorAll('#nav button').forEach(b => b.onclick = () => { current = null; tab = b.dataset.tab; filt = { genre: '', year: '', sort: 'popular' }; home(); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Date.now() - lastCheck > 600000) checkUpdate(false); });
+checkUpdate(false);
+home();
+</script>
+</body>
+</html>
