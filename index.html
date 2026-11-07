@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Screenroom</title>
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://api.themoviedb.org">
+<link rel="preconnect" href="https://image.tmdb.org">
+<link rel="preconnect" href="https://vidy.st">
 <link rel="apple-touch-icon" href="icon-180.png">
 <meta name="theme-color" content="#141922">
 <meta name="mobile-web-app-capable" content="yes">
@@ -85,6 +88,14 @@ h2.sec{margin:0 0 12px;font-size:21px}
   .watch h2{margin-top:0;font-size:20px}
   .icol{max-height:calc(100vh - 80px);overflow:auto}
 }
+/* Design pass */
+.card{transition:transform .15s,border-color .15s}
+.card:hover{transform:translateY(-3px)}
+main>*{animation:fade .25s ease-out}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.chips span{border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:13px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.card,main>*{transition:none;animation:none}.card:hover{transform:none}}
 /* Patch notes */
 .modal{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px}
 .modal .box{background:var(--surface);border:1px solid var(--line);border-radius:12px;max-width:520px;width:100%;max-height:85vh;overflow:auto;padding:20px}
@@ -98,6 +109,11 @@ h2.sec{margin:0 0 12px;font-size:21px}
 body.theater{overflow:hidden}
 body.theater .player{position:fixed;inset:0;z-index:50;width:100vw;height:100vh;height:100dvh;aspect-ratio:auto;border-radius:0;background:#000;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
 body.theater #texit{display:block;position:fixed;top:calc(10px + env(safe-area-inset-top));left:calc(10px + env(safe-area-inset-left));z-index:70;opacity:.6;border-radius:50%;width:38px;height:38px;padding:0;font-size:18px;line-height:1;background:rgba(20,25,34,.8)}
+#texit{transition:opacity .3s}
+body.theater.thide #texit{opacity:0}
+#tnext{display:none}
+body.theater.tv #tnext{display:block;position:fixed;top:calc(10px + env(safe-area-inset-top));left:calc(58px + env(safe-area-inset-left));z-index:70;opacity:.8;background:rgba(20,25,34,.8);transition:opacity .3s}
+body.theater.thide #tnext{opacity:0;pointer-events:none}
 body.theater #next{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));z-index:60;width:min(92vw,460px)}
 </style>
 </head>
@@ -114,12 +130,13 @@ body.theater #next{position:fixed;left:50%;transform:translateX(-50%);bottom:cal
   <input id="q" type="search" placeholder="Search a movie or show…" title="Press / to search" autocomplete="off">
 </header>
 <button id="texit" aria-label="Exit theater mode">✕</button>
+<button id="tnext">Next ▶</button>
 <main id="app"></main>
 <p class="hint">Press / to search, F for fullscreen, Esc to go back.</p>
 <p class="attr">This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
 
 <script>
-const APP_VERSION = '10';
+const APP_VERSION = '12';
 const IMG = 'https://image.tmdb.org/t/p/';
 const app = document.getElementById('app');
 const q = document.getElementById('q');
@@ -128,14 +145,22 @@ let key = '', tab = 'all', current = null, lastSave = 0, filt = { genre: '', yea
 try { key = localStorage.getItem('tmdb_key') || ''; lang = localStorage.getItem('lang') || 'en-US'; } catch (e) {}
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const api = async (path, params = '') => {
-  const r = await fetch(`https://api.themoviedb.org/3${path}?api_key=${key}&language=${lang}${params}`);
-  if (!r.ok) throw new Error(r.status === 401 ? 'Invalid TMDB API key.' : 'TMDB error ' + r.status);
-  return r.json();
+const cache = new Map();
+const api = (path, params = '') => {
+  const url = `https://api.themoviedb.org/3${path}?api_key=${key}&language=${lang}${params}`;
+  const hit = cache.get(url);
+  if (hit && Date.now() - hit.t < 600000) return hit.p;
+  const p = fetch(url).then(r => {
+    if (!r.ok) throw new Error(r.status === 401 ? 'Invalid TMDB API key.' : 'TMDB error ' + r.status);
+    return r.json();
+  });
+  cache.set(url, { t: Date.now(), p });
+  p.catch(() => cache.delete(url));
+  return p;
 };
 const skel = (n = 12) => '<div class="grid">' + '<div class="sk"></div>'.repeat(n) + '</div>';
 const emptyState = (t, h) => `<div class="empty"><i></i><h2 class="sec">${t}</h2><p class="meta">${h}</p></div>`;
-const clearHash = () => { document.body.classList.remove('theater'); if (location.hash) history.replaceState(null, '', location.pathname + location.search); };
+const clearHash = () => { document.body.classList.remove('theater', 'thide'); if (location.hash) history.replaceState(null, '', location.pathname + location.search); };
 const fmt = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
 /* ---- Continue watching (stored in this browser) ---- */
@@ -204,14 +229,16 @@ async function home() {
   app.innerHTML = skel();
   try {
     const mt = tab === 'movie' || tab === 'tv';
-    if (mt && !genres[tab]) { try { genres[tab] = (await api(`/genre/${tab}/list`)).genres; } catch (e) { genres[tab] = []; } }
+    const gp = (mt && !genres[tab]) ? api(`/genre/${tab}/list`).then(r => r.genres).catch(() => []) : null;
     const filtered = mt && (filt.genre || filt.year || filt.sort !== 'popular');
     const sorts = { popular: 'popularity.desc', top: 'vote_average.desc', new: tab === 'movie' ? 'primary_release_date.desc' : 'first_air_date.desc' };
     let pr = '&sort_by=' + sorts[filt.sort] + '&vote_count.gte=' + (filt.sort === 'top' ? 300 : filt.sort === 'new' ? 5 : 20);
     if (filt.sort === 'new') pr += (tab === 'movie' ? '&primary_release_date.lte=' : '&first_air_date.lte=') + new Date().toISOString().slice(0, 10);
     if (filt.genre) pr += '&with_genres=' + filt.genre;
     if (filt.year) pr += (tab === 'movie' ? '&primary_release_year=' : '&first_air_date_year=') + filt.year;
-    const d = filtered ? await api(`/discover/${tab}`, pr) : await api(`/trending/${tab}/week`);
+    const dp = filtered ? api(`/discover/${tab}`, pr) : api(`/trending/${tab}/week`);
+    if (gp) genres[tab] = await gp;
+    const d = await dp;
     const names = { all: 'Trending this week', movie: 'Trending movies', tv: 'Trending series' };
     render(d.results, filtered ? 'Filtered results' : names[tab], true);
   } catch (e) { showSetup(e.message); }
@@ -223,7 +250,7 @@ function cwRow() {
   return `<div class="row"><h2 class="sec">Continue watching</h2><div class="grid">` + l.map(x => `
     <div class="card" tabindex="0" data-type="${x.type}" data-id="${x.id}" data-s="${x.s}" data-e="${x.e}" data-t="${x.time}">
       <button class="x" aria-label="Remove from continue watching">×</button>
-      <img loading="lazy" src="${IMG}w342${x.poster}" alt="${esc(x.name)}">
+      <img loading="lazy" decoding="async" src="${IMG}w342${x.poster}" alt="${esc(x.name)}">
       <div class="prog"><i style="width:${Math.round(100 * x.time / x.dur)}%"></i></div>
       <div>${esc(x.name)}<small>${x.type === 'tv' ? `S${x.s} E${x.e} · ` : ''}${fmt(x.time)}</small></div></div>`).join('') + '</div></div>';
 }
@@ -240,7 +267,7 @@ function render(items, title, withCW) {
     const year = (i.release_date || i.first_air_date || '').slice(0, 4);
     return `<div class="card" tabindex="0" data-type="${type}" data-id="${i.id}">
       ${i.vote_average > 0 ? `<b class="rt">★ ${i.vote_average.toFixed(1)}</b>` : ''}
-      <img loading="lazy" src="${IMG}w342${i.poster_path}" alt="${esc(name)}">
+      <img loading="lazy" decoding="async" src="${IMG}w342${i.poster_path}" alt="${esc(name)}">
       <div>${esc(name)}<small>${type === 'tv' ? 'Series' : 'Movie'}${year ? ' · ' + year : ''}</small></div></div>`;
   }).join('') + '</div>';
   bindCards();
@@ -284,6 +311,7 @@ function bindCards() {
   app.querySelectorAll('.card').forEach(c => {
     const go = () => watch(c.dataset.type, c.dataset.id, { s: +c.dataset.s || 1, e: +c.dataset.e || 1, t: +c.dataset.t || 0 });
     c.onclick = go;
+    c.addEventListener('pointerdown', () => { if (c.dataset.id) api(`/${c.dataset.type}/${c.dataset.id}`).catch(() => {}); }, { passive: true });
     c.onkeydown = e => { if (e.key === 'Enter' && e.target === c) go(); };
   });
   app.querySelectorAll('.x').forEach(b => b.onclick = ev => {
@@ -357,7 +385,7 @@ function listView() {
   backBtn.style.display = 'none'; clearHash();
   const sec = (title, l, extra = '') => l.length ? `<div class="row"><div class="hd"><h2 class="sec">${title}</h2>${extra}</div><div class="grid">` +
     l.filter(x => x.poster).map(x => `<div class="card" tabindex="0" data-type="${x.type}" data-id="${x.id}">
-      <img loading="lazy" src="${IMG}w342${x.poster}" alt="${esc(x.name)}">
+      <img loading="lazy" decoding="async" src="${IMG}w342${x.poster}" alt="${esc(x.name)}">
       <div>${esc(x.name)}<small>${x.type === 'tv' ? 'Series' : 'Movie'}</small></div></div>`).join('') + '</div></div>' : '';
   const body = sec('Favorites', lsGet('fav')) + sec('History', lsGet('hist'), '<button id="clr">Clear history</button>')
     || emptyState('Your list is empty', 'Open a title and tap “♡ Add to my list” to keep it here.');
@@ -397,9 +425,13 @@ async function watch(type, id, res = {}) {
     const d = await api(`/${type}/${id}`);
     const name = d.title || d.name;
     const year = (d.release_date || d.first_air_date || '').slice(0, 4);
+    const mins = type === 'movie' ? d.runtime : (d.episode_run_time && d.episode_run_time[0]);
+    const dur = mins ? (mins >= 60 ? Math.floor(mins / 60) + 'h' + (mins % 60 ? ' ' + (mins % 60) + 'm' : '') : mins + 'm') : '';
+    const seasonsTxt = type === 'tv' && d.number_of_seasons ? ` · ${d.number_of_seasons} season${d.number_of_seasons > 1 ? 's' : ''}` : '';
     const s = res.s || 1, e = res.e || 1, t = res.t || 0;
     current = { type, id, name, poster: d.poster_path, s, e, seasons: d.number_of_seasons };
     addHist(current);
+    document.body.classList.toggle('tv', type === 'tv');
     history.replaceState(null, '', location.pathname + location.search + '#' + type + '/' + id);
     backBtn.style.display = 'block';
     app.innerHTML = `<div class="watch">
@@ -409,13 +441,14 @@ async function watch(type, id, res = {}) {
       <div class="icol">
         <div id="next"></div>
         <h2 dir="auto">${esc(name)}</h2>
-        <p class="meta">${type === 'tv' ? 'Series' : 'Movie'}${year ? ' · ' + year : ''}${d.vote_average ? ' · ★ ' + d.vote_average.toFixed(1) : ''}</p>
+        <p class="meta">${type === 'tv' ? 'Series' : 'Movie'}${year ? ' · ' + year : ''}${dur ? ' · ' + dur : ''}${seasonsTxt}${d.vote_average ? ' · ★ ' + d.vote_average.toFixed(1) : ''}</p>
+        <div class="chips">${(d.genres || []).map(g => `<span>${esc(g.name)}</span>`).join('')}</div>
         <button id="fav" class="${isFav(type, id) ? 'on' : ''}">${isFav(type, id) ? '♥ In my list' : '♡ Add to my list'}</button> <button id="share">Share</button> <button id="theater">Theater mode</button>
-        ${type === 'tv' ? `<div class="ep">Season <input id="s" type="number" min="1" value="${s}"> Episode <input id="e" type="number" min="1" value="${e}"> <button id="go">Play</button></div>` : ''}
+        ${type === 'tv' ? `<div class="ep">Season <input id="s" type="number" min="1" value="${s}"> Episode <input id="e" type="number" min="1" value="${e}"> <button id="go">Play</button> <button id="nextep">Next ▶</button></div>` : ''}
         <p dir="auto">${esc(d.overview)}</p>
         <div class="sim" id="sim"></div>
       </div></div>`;
-    document.getElementById('theater').onclick = () => document.body.classList.add('theater');
+    document.getElementById('theater').onclick = enterTheater;
     document.getElementById('share').onclick = async ev => {
       const url = location.href;
       try {
@@ -429,12 +462,39 @@ async function watch(type, id, res = {}) {
       ev.target.classList.toggle('on', on);
       ev.target.textContent = on ? '♥ In my list' : '♡ Add to my list';
     };
+    if (type === 'tv') document.getElementById('nextep').onclick = nextEpisodeNow;
     if (type === 'tv') document.getElementById('go').onclick = () => {
       current.s = +document.getElementById('s').value || 1;
       current.e = +document.getElementById('e').value || 1;
       document.getElementById('frame').src = embedUrl(type, id, current.s, current.e, 0);
     };
   } catch (err) { app.innerHTML = `<p class="msg">${esc(err.message)}</p>`; }
+}
+
+let tTimer;
+function showTheaterUI() {
+  document.body.classList.remove('thide');
+  clearTimeout(tTimer);
+  tTimer = setTimeout(() => document.body.classList.add('thide'), 3000);
+}
+function enterTheater() {
+  document.body.classList.add('theater');
+  history.pushState({ theater: 1 }, '');
+  showTheaterUI();
+}
+function exitTheater() {
+  document.body.classList.remove('theater', 'thide');
+  clearTimeout(tTimer);
+}
+
+async function nextEpisodeNow() {
+  if (!current || current.type !== 'tv') return;
+  try {
+    const sd = await api(`/tv/${current.id}/season/${current.s}`);
+    let s = current.s, e = current.e + 1;
+    if (e > sd.episodes.length) { s++; e = 1; if (current.seasons && s > current.seasons) return; }
+    playEpisode(s, e);
+  } catch (err) {}
 }
 
 function playEpisode(s, e) {
@@ -476,6 +536,8 @@ function showNext(s, e) {
 
 // Newest entry first. Add a new entry at the top for every update.
 const PATCHNOTES = [
+  { v: '12', c: ['Theater mode: the ✕ now fades out after 3 seconds. Tap the top-left corner to bring it back, or swipe back to leave.', 'New “Next ▶” button on series pages and in theater mode.', 'Faster: results are kept for a few minutes, a title starts loading the moment you touch its poster, and the first screen loads in parallel.'] },
+  { v: '11', c: ['Design pass: posters lift slightly on hover, pages fade in smoothly.', 'Title pages now show the runtime (or number of seasons) and genre tags.'] },
   { v: '10', c: ['Patch notes: this screen appears after every update and keeps the history of past versions.'] },
   { v: '9', c: ['Theater mode: the player fills the whole screen while staying in the app, with a ✕ to exit. Made for iPhone.', 'Share this app button at the bottom of My list.'] },
   { v: '8', c: ['Language of titles and descriptions: English, Français, العربية or Español.', 'Share button on each title, with direct links.', 'Rating shown on each poster.', 'TMDB credit line at the bottom.'] },
@@ -524,7 +586,7 @@ async function loadSimilar(type, id) {
     const box = document.getElementById('sim');
     if (!l.length || !box || !current || String(current.id) !== String(id)) return;
     box.innerHTML = '<h2 class="sec">Similar titles</h2><div class="grid sm">' + l.map(i => `<div class="card" tabindex="0" data-type="${type}" data-id="${i.id}">
-      <img loading="lazy" src="${IMG}w342${i.poster_path}" alt="${esc(i.title || i.name)}">
+      <img loading="lazy" decoding="async" src="${IMG}w342${i.poster_path}" alt="${esc(i.title || i.name)}">
       <div>${esc(i.title || i.name)}</div></div>`).join('') + '</div>';
     bindCards();
   } catch (e) {}
@@ -534,7 +596,7 @@ document.addEventListener('keydown', e => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const typing = /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName);
   if (e.key === '/' && !typing) { e.preventDefault(); q.focus(); q.select(); }
-  else if (e.key === 'Escape') { if (document.body.classList.contains('theater')) document.body.classList.remove('theater'); else if (typing) document.activeElement.blur(); else if (current) backBtn.click(); }
+  else if (e.key === 'Escape') { if (document.body.classList.contains('theater')) exitTheater(); else if (typing) document.activeElement.blur(); else if (current) backBtn.click(); }
   else if (e.key.toLowerCase() === 'f' && !typing) {
     const pl = document.querySelector('.player');
     if (!pl) return;
@@ -542,7 +604,12 @@ document.addEventListener('keydown', e => {
   }
 });
 
-document.getElementById('texit').onclick = () => document.body.classList.remove('theater');
+document.getElementById('texit').onclick = () => {
+  if (document.body.classList.contains('thide')) return showTheaterUI();
+  if (history.state && history.state.theater) history.back(); else exitTheater();
+};
+document.getElementById('tnext').onclick = () => { showTheaterUI(); nextEpisodeNow(); };
+window.addEventListener('popstate', () => { if (document.body.classList.contains('theater')) exitTheater(); });
 backBtn.onclick = () => { clearInterval(nextTimer); current = null; q.value.trim() ? q.dispatchEvent(new Event('input')) : home(); };
 document.getElementById('home').onclick = () => { current = null; tab = 'all'; home(); };
 document.querySelectorAll('#nav button').forEach(b => b.onclick = () => { current = null; tab = b.dataset.tab; filt = { genre: '', year: '', sort: 'popular' }; home(); });
