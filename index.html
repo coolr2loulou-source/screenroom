@@ -98,7 +98,7 @@ main>*{animation:fade .25s ease-out}
 @media (prefers-reduced-motion:reduce){.card,main>*{transition:none;animation:none}.card:hover{transform:none}}
 /* Patch notes */
 .modal{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px}
-.modal .box{background:var(--surface);border:1px solid var(--line);border-radius:12px;max-width:520px;width:100%;max-height:85vh;overflow:auto;padding:20px}
+.modal .box{background:var(--surface);border:1px solid var(--line);border-radius:12px;max-width:560px;width:100%;max-height:85vh;overflow:auto;padding:20px}
 .pn{margin:0 0 18px}
 .pn h3{margin:0 0 6px;font:700 18px Georgia,serif}
 .pn ul{margin:0;padding-left:20px}
@@ -136,7 +136,7 @@ body.theater #next{position:fixed;left:50%;transform:translateX(-50%);bottom:cal
 <p class="attr">This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
 
 <script>
-const APP_VERSION = '14';
+const APP_VERSION = '15';
 const IMG = 'https://image.tmdb.org/t/p/';
 const app = document.getElementById('app');
 const q = document.getElementById('q');
@@ -476,8 +476,7 @@ function showDownloadModal(type, id, s, e, name) {
   if (document.getElementById('dlm')) return;
   const cleanName = name.replace(/[<>:"/\|?*]+/g, '').trim() + (type === 'tv' ? `_S${s}E${e}` : '');
   const filename = `${cleanName}.mp4`;
-  const embedUrlStr = type === 'movie' ? `https://vidy.st/movie/${id}` : `https://vidy.st/tv/${id}/${s}/${e}`;
-  const cmd = `yt-dlp --referer "https://vidy.st/" --add-header "Origin: https://vidy.st" --hls-prefer-native -o "${filename}" "${embedUrlStr}"`;
+  const cmd = `$videoUrl = "PUT_YOUR_M3U8_URL_HERE"; $exe = "$HOME\yt-dlp.exe"; if(!(Test-Path $exe)){ Write-Host "Downloading yt-dlp..." -ForegroundColor Cyan; Invoke-WebRequest "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -OutFile $exe }; try { & $exe --referer "https://vidy.st/" --add-header "Origin: https://vidy.st" --hls-prefer-native -o "${filename}" $videoUrl } catch { Write-Host "`n[!] Download error: If you get HTTP Error 502 Bad Gateway or 403 Forbidden, your .m3u8 token expired. Refresh the video page and regrab a fresh stream link!" -ForegroundColor Red }`;
 
   const m = document.createElement('div');
   m.id = 'dlm'; m.className = 'modal';
@@ -486,27 +485,21 @@ function showDownloadModal(type, id, s, e, name) {
     <p class="meta">Target: <b>${esc(name)}</b> ${type === 'tv' ? `(S${s} E${e})` : ''}</p>
     
     <div style="margin-bottom:14px">
-      <p class="meta" style="margin-bottom:6px"><b>1. Run with yt-dlp</b> (Phase 1):</p>
-      <textarea readonly style="width:100%;height:65px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font-family:monospace;font-size:13px;resize:none">${esc(cmd)}</textarea>
+      <p class="meta" style="margin-bottom:6px"><b>1. Paste & Run in PowerShell</b> (Auto-fetches yt-dlp):</p>
+      <textarea readonly style="width:100%;height:115px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font-family:monospace;font-size:12px;resize:none">${esc(cmd)}</textarea>
       <button id="dlcopy" style="margin-top:8px">Copy command</button>
     </div>
 
     <div style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:14px;font-size:14px">
-      <p style="margin:0 0 6px;color:var(--accent);font-weight:600">💡 Don't have yt-dlp or need setup?</p>
-      <p style="margin:0 0 8px;color:var(--muted)">Download the latest executable and add it to your system PATH.</p>
-      <a href="https://github.com/yt-dlp/yt-dlp/releases/latest" target="_blank" style="color:var(--accent);text-decoration:underline">Get yt-dlp</a> | 
-      <a href="#" id="toggle-guide" style="color:var(--accent);text-decoration:underline;margin-left:6px">View quick guide</a>
-      <div id="dl-guide" style="display:none;margin-top:10px;color:var(--muted);font-size:13px;line-height:1.4">
-        <b>Quick Installation & Path Guide:</b><br>
-        1. Download <code>yt-dlp.exe</code> (Windows) or binary (Linux/Mac) from the official GitHub releases.<br>
-        2. Place it in a folder of your choice (e.g., <code>C:\yt-dlp</code> or <code>~/.local/bin</code>).<br>
-        3. Add that folder to your system <b>PATH</b> environment variable so you can run <code>yt-dlp</code> from any terminal window!<br>
-        4. If your stream uses special segments, the command above includes <code>--hls-prefer-native</code> automatically.
-      </div>
+      <p style="margin:0 0 6px;color:var(--accent);font-weight:600">⚠️ Common Download Errors & Solutions:</p>
+      <ul style="margin:0;padding-left:18px;color:var(--muted);font-size:13px;line-height:1.4">
+        <li><b>HTTP Error 502 (Bad Gateway) / 403 (Forbidden):</b> The .m3u8 token expired! Simply refresh the video page on Screenroom and regrab a fresh link.</li>
+        <li><b>Path or command errors:</b> This command auto-downloads <code>yt-dlp.exe</code> directly into your User folder (<code>$HOME\yt-dlp.exe</code>) so no system setup is required.</li>
+      </ul>
     </div>
 
     <div style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:16px;font-size:14px">
-      <p style="margin:0 0 6px;color:var(--accent);font-weight:600">⚡ Want 1-click .m3u8 link sniffing? (Phase 2)</p>
+      <p style="margin:0 0 6px;color:var(--accent);font-weight:600">⚡ Want 1-click .m3u8 link sniffing?</p>
       <p style="margin:0 0 8px;color:var(--muted)">Install a browser extension like <b>HLS Downloader</b> or <b>Simple Media Sniffer</b>. When playing the video inside Screenroom, the extension will automatically detect and list the direct stream link without opening Developer Tools!</p>
     </div>
 
@@ -517,11 +510,6 @@ function showDownloadModal(type, id, s, e, name) {
   document.body.appendChild(m);
   const close = () => m.remove();
   document.getElementById('dlclose').onclick = close;
-  document.getElementById('toggle-guide').onclick = (ev) => {
-    ev.preventDefault();
-    const g = document.getElementById('dl-guide');
-    g.style.display = g.style.display === 'none' ? 'block' : 'none';
-  };
   document.getElementById('dlcopy').onclick = async () => {
     try {
       await navigator.clipboard.writeText(cmd);
@@ -598,6 +586,7 @@ function showNext(s, e) {
 
 // Newest entry first. Add a new entry at the top for every update.
 const PATCHNOTES = [
+  { v: '15', c: ['PowerShell Bootstrap & Error Guard: Command template now includes top-level $videoUrl variable and auto-fetches yt-dlp.exe to user folder.', 'Added error handling to PowerShell output explaining 502/403 token expiration with instructions to regrab a fresh link.', 'Modal UI updated with clear troubleshooting section for HTTP errors.'] },
   { v: '14', c: ['Phase 1 & 2 integration: Download modal now generates ready-to-run yt-dlp commands with clean filenames and native HLS flags.', 'Added a built-in yt-dlp installation guide and download link.', 'Added Phase 2 recommendation for 1-click .m3u8 stream sniffing browser extensions (like HLS Downloader).'] },
   { v: '13', c: ['Added a Download button on movie and series pages to generate and copy a ready-to-use yt-dlp command for offline downloading.'] },
   { v: '12', c: ['Theater mode: the ✕ now fades out after 3 seconds. Bring it back by tapping the top-left corner, or swipe back to leave.', 'New “Next ▶” button on series pages and in theater mode.', 'Faster: results are cached for a few minutes, posters start loading on touch, and initial load runs in parallel.'] },
