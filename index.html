@@ -51,6 +51,9 @@ main{padding:20px max(20px,env(safe-area-inset-right)) 40px max(20px,env(safe-ar
 .upd button{background:#141922;color:var(--text);border:0}
 .nextup{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--accent);border-radius:8px;padding:10px 12px;margin-bottom:12px}
 .nextup span{flex:1 1 160px}
+.rt{position:absolute;top:6px;left:6px;background:rgba(20,25,34,.85);border-radius:6px;padding:1px 7px;font-size:12px;font-weight:600}
+#lang{padding:9px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--text);font-size:15px;margin:0 0 12px}
+.attr{text-align:center;color:var(--muted);font-size:12px;padding:0 20px calc(24px + env(safe-area-inset-bottom))}
 .bk{display:flex;gap:10px;flex-wrap:wrap}
 .hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .hd h2{margin:0}
@@ -82,6 +85,20 @@ h2.sec{margin:0 0 12px;font-size:21px}
   .watch h2{margin-top:0;font-size:20px}
   .icol{max-height:calc(100vh - 80px);overflow:auto}
 }
+/* Patch notes */
+.modal{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px}
+.modal .box{background:var(--surface);border:1px solid var(--line);border-radius:12px;max-width:520px;width:100%;max-height:85vh;overflow:auto;padding:20px}
+.pn{margin:0 0 18px}
+.pn h3{margin:0 0 6px;font:700 18px Georgia,serif}
+.pn ul{margin:0;padding-left:20px}
+.pn li{margin:3px 0}
+.pn.old{opacity:.7}
+/* Theater mode: in-page full screen, keeps our controls (iPhone friendly) */
+#texit{display:none}
+body.theater{overflow:hidden}
+body.theater .player{position:fixed;inset:0;z-index:50;width:100vw;height:100vh;height:100dvh;aspect-ratio:auto;border-radius:0;background:#000;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+body.theater #texit{display:block;position:fixed;top:calc(10px + env(safe-area-inset-top));left:calc(10px + env(safe-area-inset-left));z-index:70;opacity:.6;border-radius:50%;width:38px;height:38px;padding:0;font-size:18px;line-height:1;background:rgba(20,25,34,.8)}
+body.theater #next{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));z-index:60;width:min(92vw,460px)}
 </style>
 </head>
 <body>
@@ -96,26 +113,29 @@ h2.sec{margin:0 0 12px;font-size:21px}
   </nav>
   <input id="q" type="search" placeholder="Search a movie or show…" title="Press / to search" autocomplete="off">
 </header>
+<button id="texit" aria-label="Exit theater mode">✕</button>
 <main id="app"></main>
 <p class="hint">Press / to search, F for fullscreen, Esc to go back.</p>
+<p class="attr">This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
 
 <script>
-const APP_VERSION = '7';
+const APP_VERSION = '10';
 const IMG = 'https://image.tmdb.org/t/p/';
 const app = document.getElementById('app');
 const q = document.getElementById('q');
 const backBtn = document.getElementById('back');
-let key = '', tab = 'all', current = null, lastSave = 0, filt = { genre: '', year: '', sort: 'popular' }, genres = {}, nextTimer = null, lastCheck = 0;
-try { key = localStorage.getItem('tmdb_key') || ''; } catch (e) {}
+let key = '', tab = 'all', current = null, lastSave = 0, filt = { genre: '', year: '', sort: 'popular' }, genres = {}, nextTimer = null, lastCheck = 0, lang = 'en-US';
+try { key = localStorage.getItem('tmdb_key') || ''; lang = localStorage.getItem('lang') || 'en-US'; } catch (e) {}
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const api = async (path, params = '') => {
-  const r = await fetch(`https://api.themoviedb.org/3${path}?api_key=${key}&language=en-US${params}`);
+  const r = await fetch(`https://api.themoviedb.org/3${path}?api_key=${key}&language=${lang}${params}`);
   if (!r.ok) throw new Error(r.status === 401 ? 'Invalid TMDB API key.' : 'TMDB error ' + r.status);
   return r.json();
 };
 const skel = (n = 12) => '<div class="grid">' + '<div class="sk"></div>'.repeat(n) + '</div>';
 const emptyState = (t, h) => `<div class="empty"><i></i><h2 class="sec">${t}</h2><p class="meta">${h}</p></div>`;
+const clearHash = () => { document.body.classList.remove('theater'); if (location.hash) history.replaceState(null, '', location.pathname + location.search); };
 const fmt = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
 /* ---- Continue watching (stored in this browser) ---- */
@@ -159,7 +179,7 @@ function addHist(it) {
 
 /* ---- Views ---- */
 function showSetup(err) {
-  backBtn.style.display = 'none';
+  backBtn.style.display = 'none'; clearHash();
   app.innerHTML = `<div class="setup">
     <h2>Add your TMDB key</h2>
     <p class="meta">Screenroom uses TMDB for search and posters. Get a free API key (v3) at themoviedb.org → Settings → API.</p>
@@ -209,7 +229,7 @@ function cwRow() {
 }
 
 function render(items, title, withCW) {
-  backBtn.style.display = 'none';
+  backBtn.style.display = 'none'; clearHash();
   items = items.filter(i => i.media_type !== 'person' && i.poster_path);
   const cw = withCW ? cwRow() : '';
   const bar = withCW ? filterBar() : '';
@@ -219,6 +239,7 @@ function render(items, title, withCW) {
     const name = i.title || i.name;
     const year = (i.release_date || i.first_air_date || '').slice(0, 4);
     return `<div class="card" tabindex="0" data-type="${type}" data-id="${i.id}">
+      ${i.vote_average > 0 ? `<b class="rt">★ ${i.vote_average.toFixed(1)}</b>` : ''}
       <img loading="lazy" src="${IMG}w342${i.poster_path}" alt="${esc(name)}">
       <div>${esc(name)}<small>${type === 'tv' ? 'Series' : 'Movie'}${year ? ' · ' + year : ''}</small></div></div>`;
   }).join('') + '</div>';
@@ -280,11 +301,24 @@ function backupBox() {
     <div class="bk"><button id="exp">Export backup</button><button id="imp">Import backup</button></div>
     <input id="impf" type="file" accept=".json,application/json" hidden>
     <p id="bkmsg" class="meta"></p></div>
-    <div class="row"><h2 class="sec">App</h2><p class="meta">Version ${APP_VERSION}. <span id="upmsg"></span></p><button id="upchk">Check for updates</button></div>`;
+    <div class="row"><h2 class="sec">App</h2><p class="meta">Language of titles and descriptions</p><select id="lang">${[['en-US', 'English'], ['fr-FR', 'Français'], ['ar-SA', 'العربية'], ['es-ES', 'Español']].map(([v, n]) => `<option value="${v}"${lang === v ? ' selected' : ''}>${n}</option>`).join('')}</select>
+    <p class="meta">Version ${APP_VERSION}. <span id="upmsg"></span></p><button id="upchk">Check for updates</button> <button id="shareapp">Share this app</button> <button id="pnbtn">Patch notes</button></div>`;
 }
 
 function bindBackup() {
   const exp = document.getElementById('exp'), imp = document.getElementById('imp'), f = document.getElementById('impf');
+  const ls = document.getElementById('lang');
+  if (ls) ls.onchange = () => { lang = ls.value; try { localStorage.setItem('lang', lang); } catch (e) {} genres = {}; const m = document.getElementById('bkmsg'); if (m) m.textContent = 'Language saved. It applies to the next page you open.'; };
+  const pb = document.getElementById('pnbtn');
+  if (pb) pb.onclick = showPatchNotes;
+  const sa = document.getElementById('shareapp');
+  if (sa) sa.onclick = async () => {
+    const url = location.origin + location.pathname;
+    try {
+      if (navigator.share) await navigator.share({ title: 'Screenroom', url });
+      else { await navigator.clipboard.writeText(url); sa.textContent = 'Link copied'; }
+    } catch (e) {}
+  };
   const uc = document.getElementById('upchk'); if (uc) uc.onclick = () => checkUpdate(true);
   const say = t => { const m = document.getElementById('bkmsg'); if (m) m.textContent = t; };
   if (exp) exp.onclick = () => {
@@ -320,7 +354,7 @@ function bindBackup() {
 }
 
 function listView() {
-  backBtn.style.display = 'none';
+  backBtn.style.display = 'none'; clearHash();
   const sec = (title, l, extra = '') => l.length ? `<div class="row"><div class="hd"><h2 class="sec">${title}</h2>${extra}</div><div class="grid">` +
     l.filter(x => x.poster).map(x => `<div class="card" tabindex="0" data-type="${x.type}" data-id="${x.id}">
       <img loading="lazy" src="${IMG}w342${x.poster}" alt="${esc(x.name)}">
@@ -366,6 +400,7 @@ async function watch(type, id, res = {}) {
     const s = res.s || 1, e = res.e || 1, t = res.t || 0;
     current = { type, id, name, poster: d.poster_path, s, e, seasons: d.number_of_seasons };
     addHist(current);
+    history.replaceState(null, '', location.pathname + location.search + '#' + type + '/' + id);
     backBtn.style.display = 'block';
     app.innerHTML = `<div class="watch">
       <div class="player"><iframe id="frame" allowfullscreen
@@ -373,13 +408,21 @@ async function watch(type, id, res = {}) {
         src="${embedUrl(type, id, s, e, t)}"></iframe></div>
       <div class="icol">
         <div id="next"></div>
-        <h2>${esc(name)}</h2>
+        <h2 dir="auto">${esc(name)}</h2>
         <p class="meta">${type === 'tv' ? 'Series' : 'Movie'}${year ? ' · ' + year : ''}${d.vote_average ? ' · ★ ' + d.vote_average.toFixed(1) : ''}</p>
-        <button id="fav" class="${isFav(type, id) ? 'on' : ''}">${isFav(type, id) ? '♥ In my list' : '♡ Add to my list'}</button>
+        <button id="fav" class="${isFav(type, id) ? 'on' : ''}">${isFav(type, id) ? '♥ In my list' : '♡ Add to my list'}</button> <button id="share">Share</button> <button id="theater">Theater mode</button>
         ${type === 'tv' ? `<div class="ep">Season <input id="s" type="number" min="1" value="${s}"> Episode <input id="e" type="number" min="1" value="${e}"> <button id="go">Play</button></div>` : ''}
-        <p>${esc(d.overview)}</p>
+        <p dir="auto">${esc(d.overview)}</p>
         <div class="sim" id="sim"></div>
       </div></div>`;
+    document.getElementById('theater').onclick = () => document.body.classList.add('theater');
+    document.getElementById('share').onclick = async ev => {
+      const url = location.href;
+      try {
+        if (navigator.share) await navigator.share({ title: name, url });
+        else { await navigator.clipboard.writeText(url); ev.target.textContent = 'Link copied'; setTimeout(() => { ev.target.textContent = 'Share'; }, 2000); }
+      } catch (e) {}
+    };
     loadSimilar(type, id);
     document.getElementById('fav').onclick = ev => {
       const on = toggleFav(current);
@@ -431,6 +474,28 @@ function showNext(s, e) {
   }, 1000);
 }
 
+// Newest entry first. Add a new entry at the top for every update.
+const PATCHNOTES = [
+  { v: '10', c: ['Patch notes: this screen appears after every update and keeps the history of past versions.'] },
+  { v: '9', c: ['Theater mode: the player fills the whole screen while staying in the app, with a ✕ to exit. Made for iPhone.', 'Share this app button at the bottom of My list.'] },
+  { v: '8', c: ['Language of titles and descriptions: English, Français, العربية or Español.', 'Share button on each title, with direct links.', 'Rating shown on each poster.', 'TMDB credit line at the bottom.'] },
+  { v: '7', c: ['Surprise me: opens a random well-rated title.', 'Sort by Popular, Top rated or Newest.', 'Next up countdown when a series episode ends.', 'Update banner and Check for updates.'] },
+  { v: '1 to 6', c: ['Search, trending, player with fullscreen, landscape layout, Movies and Series tabs, Continue watching, My list and history, genre and year filters, similar titles, loading placeholders, keyboard shortcuts, backup and import, install as an app.'] }
+];
+
+function showPatchNotes() {
+  if (document.getElementById('pnm')) return;
+  const m = document.createElement('div');
+  m.id = 'pnm'; m.className = 'modal';
+  m.innerHTML = '<div class="box" role="dialog" aria-label="Patch notes"><h2 class="sec">What’s new</h2>' +
+    PATCHNOTES.map((n, i) => `<div class="pn${i ? ' old' : ''}"><h3>Version ${esc(n.v)}${i ? '' : ' (current)'}</h3><ul>${n.c.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`).join('') +
+    '<button id="pnok">Got it</button></div>';
+  document.body.appendChild(m);
+  const close = () => { m.remove(); try { localStorage.setItem('seen', APP_VERSION); } catch (e) {} };
+  document.getElementById('pnok').onclick = close;
+  m.onclick = ev => { if (ev.target === m) close(); };
+}
+
 async function checkUpdate(manual) {
   const say = t => { const m = document.getElementById('upmsg'); if (m) m.textContent = t; };
   if (location.protocol === 'file:') { if (manual) say('Updates only work on the hosted version.'); return; }
@@ -469,7 +534,7 @@ document.addEventListener('keydown', e => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const typing = /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName);
   if (e.key === '/' && !typing) { e.preventDefault(); q.focus(); q.select(); }
-  else if (e.key === 'Escape') { if (typing) document.activeElement.blur(); else if (current) backBtn.click(); }
+  else if (e.key === 'Escape') { if (document.body.classList.contains('theater')) document.body.classList.remove('theater'); else if (typing) document.activeElement.blur(); else if (current) backBtn.click(); }
   else if (e.key.toLowerCase() === 'f' && !typing) {
     const pl = document.querySelector('.player');
     if (!pl) return;
@@ -477,12 +542,17 @@ document.addEventListener('keydown', e => {
   }
 });
 
+document.getElementById('texit').onclick = () => document.body.classList.remove('theater');
 backBtn.onclick = () => { clearInterval(nextTimer); current = null; q.value.trim() ? q.dispatchEvent(new Event('input')) : home(); };
 document.getElementById('home').onclick = () => { current = null; tab = 'all'; home(); };
 document.querySelectorAll('#nav button').forEach(b => b.onclick = () => { current = null; tab = b.dataset.tab; filt = { genre: '', year: '', sort: 'popular' }; home(); });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Date.now() - lastCheck > 600000) checkUpdate(false); });
+let seenV = '';
+try { seenV = localStorage.getItem('seen') || ''; } catch (e) {}
+if (seenV !== APP_VERSION) { if (key) showPatchNotes(); else { try { localStorage.setItem('seen', APP_VERSION); } catch (e) {} } }
 checkUpdate(false);
-home();
+const hm = location.hash.match(/^#(movie|tv)\/(\d+)$/);
+if (hm && key) watch(hm[1], hm[2]); else home();
 </script>
 </body>
 </html>
