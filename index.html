@@ -58,7 +58,7 @@ main{padding:20px max(20px,env(safe-area-inset-right)) 40px max(20px,env(safe-ar
 #lang{padding:9px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--text);font-size:15px;margin:0 0 12px}
 .attr{text-align:center;color:var(--muted);font-size:12px;padding:0 20px calc(24px + env(safe-area-inset-bottom))}
 .bk{display:flex;gap:10px;flex-wrap:wrap}
-.hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.hd{display:flex;justify-between:space-between;align-items:center;margin-bottom:12px}
 .hd h2{margin:0}
 #fav.on{color:var(--accent);border-color:var(--accent)}
 .prog i{display:block;height:100%;background:var(--accent)}
@@ -136,7 +136,7 @@ body.theater #next{position:fixed;left:50%;transform:translateX(-50%);bottom:cal
 <p class="attr">This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
 
 <script>
-const APP_VERSION = '12';
+const APP_VERSION = '13';
 const IMG = 'https://image.tmdb.org/t/p/';
 const app = document.getElementById('app');
 const q = document.getElementById('q');
@@ -144,7 +144,7 @@ const backBtn = document.getElementById('back');
 let key = '', tab = 'all', current = null, lastSave = 0, filt = { genre: '', year: '', sort: 'popular' }, genres = {}, nextTimer = null, lastCheck = 0, lang = 'en-US';
 try { key = localStorage.getItem('tmdb_key') || ''; lang = localStorage.getItem('lang') || 'en-US'; } catch (e) {}
 
-const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c] || c));
 const cache = new Map();
 const api = (path, params = '') => {
   const url = `https://api.themoviedb.org/3${path}?api_key=${key}&language=${lang}${params}`;
@@ -443,12 +443,13 @@ async function watch(type, id, res = {}) {
         <h2 dir="auto">${esc(name)}</h2>
         <p class="meta">${type === 'tv' ? 'Series' : 'Movie'}${year ? ' · ' + year : ''}${dur ? ' · ' + dur : ''}${seasonsTxt}${d.vote_average ? ' · ★ ' + d.vote_average.toFixed(1) : ''}</p>
         <div class="chips">${(d.genres || []).map(g => `<span>${esc(g.name)}</span>`).join('')}</div>
-        <button id="fav" class="${isFav(type, id) ? 'on' : ''}">${isFav(type, id) ? '♥ In my list' : '♡ Add to my list'}</button> <button id="share">Share</button> <button id="theater">Theater mode</button>
+        <button id="fav" class="${isFav(type, id) ? 'on' : ''}">${isFav(type, id) ? '♥ In my list' : '♡ Add to my list'}</button> <button id="share">Share</button> <button id="dl">Download</button> <button id="theater">Theater mode</button>
         ${type === 'tv' ? `<div class="ep">Season <input id="s" type="number" min="1" value="${s}"> Episode <input id="e" type="number" min="1" value="${e}"> <button id="go">Play</button> <button id="nextep">Next ▶</button></div>` : ''}
         <p dir="auto">${esc(d.overview)}</p>
         <div class="sim" id="sim"></div>
       </div></div>`;
     document.getElementById('theater').onclick = enterTheater;
+    document.getElementById('dl').onclick = () => showDownloadModal(type, id, current.s, current.e, name);
     document.getElementById('share').onclick = async ev => {
       const url = location.href;
       try {
@@ -469,6 +470,39 @@ async function watch(type, id, res = {}) {
       document.getElementById('frame').src = embedUrl(type, id, current.s, current.e, 0);
     };
   } catch (err) { app.innerHTML = `<p class="msg">${esc(err.message)}</p>`; }
+}
+
+function showDownloadModal(type, id, s, e, name) {
+  if (document.getElementById('dlm')) return;
+  const embedUrlStr = type === 'movie' 
+    ? `https://vidy.st/movie/${id}` 
+    : `https://vidy.st/tv/${id}/${s}/${e}`;
+  const cmd = `yt-dlp "${embedUrlStr}"`;
+  const m = document.createElement('div');
+  m.id = 'dlm'; m.className = 'modal';
+  m.innerHTML = `<div class="box" role="dialog" aria-label="Download with yt-dlp">
+    <h2 class="sec">Download with yt-dlp</h2>
+    <p class="meta">Target: <b>${esc(name)}</b> ${type === 'tv' ? `(S${s} E${e})` : ''}</p>
+    <p class="meta">Copy this command to run in your terminal where yt-dlp is installed:</p>
+    <textarea readonly style="width:100%;height:70px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px;font-family:monospace;font-size:14px;resize:none;margin-bottom:12px">${esc(cmd)}</textarea>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button id="dlcopy">Copy command</button>
+      <button id="dlclose">Close</button>
+    </div>
+    <p style="color:var(--muted);font-size:12px;margin-top:12px">Note: Because the video plays inside a cross-origin iframe, browsers restrict direct client-side .m3u8 sniffing. Passing the embed URL directly to yt-dlp allows it to resolve and download the stream.</p>
+  </div>`;
+  document.body.appendChild(m);
+  const close = () => m.remove();
+  document.getElementById('dlclose').onclick = close;
+  document.getElementById('dlcopy').onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(cmd);
+      const btn = document.getElementById('dlcopy');
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = 'Copy command'; }, 2000);
+    } catch (e) {}
+  };
+  m.onclick = ev => { if (ev.target === m) close(); };
 }
 
 let tTimer;
@@ -536,7 +570,8 @@ function showNext(s, e) {
 
 // Newest entry first. Add a new entry at the top for every update.
 const PATCHNOTES = [
-  { v: '12', c: ['Theater mode: the ✕ now fades out after 3 seconds. Tap the top-left corner to bring it back, or swipe back to leave.', 'New “Next ▶” button on series pages and in theater mode.', 'Faster: results are kept for a few minutes, a title starts loading the moment you touch its poster, and the first screen loads in parallel.'] },
+  { v: '13', c: ['Added a Download button on movie and series pages to generate and copy a ready-to-use yt-dlp command for offline downloading.'] },
+  { v: '12', c: ['Theater mode: the ✕ now fades out after 3 seconds. Bring it back by tapping the top-left corner, or swipe back to leave.', 'New “Next ▶” button on series pages and in theater mode.', 'Faster: results are cached for a few minutes, posters start loading on touch, and initial load runs in parallel.'] },
   { v: '11', c: ['Design pass: posters lift slightly on hover, pages fade in smoothly.', 'Title pages now show the runtime (or number of seasons) and genre tags.'] },
   { v: '10', c: ['Patch notes: this screen appears after every update and keeps the history of past versions.'] },
   { v: '9', c: ['Theater mode: the player fills the whole screen while staying in the app, with a ✕ to exit. Made for iPhone.', 'Share this app button at the bottom of My list.'] },
@@ -605,7 +640,7 @@ document.addEventListener('keydown', e => {
 });
 
 document.getElementById('texit').onclick = () => {
-  if (document.body.classList.contains('thide')) return showTheaterUI();
+  if (document.body.classList.contains('theater')) return showTheaterUI();
   if (history.state && history.state.theater) history.back(); else exitTheater();
 };
 document.getElementById('tnext').onclick = () => { showTheaterUI(); nextEpisodeNow(); };
