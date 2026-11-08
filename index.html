@@ -27,7 +27,7 @@ nav{display:flex;gap:6px}
 nav button{border-color:transparent;background:transparent;color:var(--muted)}
 nav button.on{color:var(--text);border-color:var(--accent)}
 #q:focus,button:focus-visible,.card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-main{padding:20px max(20px,env(safe-area-inset-right)) 40px max(20px,env(safe-area-inset-left));max-width:1200px;margin:0 auto}
+main{padding:20px max(20px,env(safe-area-inset-right)) 40px max(20px,env(safe-area-inset-left));max-width:1600px;margin:0 auto}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px}
 .card{background:var(--surface);border-radius:8px;overflow:hidden;cursor:pointer;border:1px solid var(--line)}
 .card:hover{border-color:var(--accent)}
@@ -88,6 +88,23 @@ h2.sec{margin:0 0 12px;font-size:21px}
   .watch h2{margin-top:0;font-size:20px}
   .icol{max-height:calc(100vh - 80px);overflow:auto}
 }
+/* Home rows + hero */
+.hero{position:relative;border-radius:14px;overflow:hidden;background-size:cover;background-position:center 20%;min-height:240px;display:flex;align-items:flex-end;margin-bottom:28px;border:1px solid var(--line)}
+.hero-in{padding:28px;max-width:640px}
+.hero h1{margin:6px 0 8px;font:700 clamp(26px,4vw,44px)/1.1 Georgia,serif}
+.hero p{margin:0 0 16px;color:#d6d3cc}
+.hero button{margin-right:8px}
+.hero .primary{background:var(--accent);color:#141922;border-color:var(--accent);font-weight:700}
+@media (min-width:900px){.hero{min-height:380px}.hero-in{padding:40px}}
+.railwrap{position:relative}
+.rail{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x proximity;padding-bottom:10px;scrollbar-width:thin}
+.rail .card{flex:0 0 150px;scroll-snap-align:start}
+@media (min-width:900px){.rail .card{flex-basis:185px}}
+.arr{position:absolute;top:32%;z-index:3;width:40px;height:56px;padding:0;font-size:28px;line-height:1;background:rgba(20,25,34,.85);opacity:0;transition:opacity .2s}
+.arr.l{left:-6px}.arr.r{right:-6px}
+@media (hover:hover){.railwrap:hover .arr{opacity:.95}}
+@media (hover:none){.arr{display:none}}
+@media (min-width:1000px){.grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}}
 /* Design pass */
 .card{transition:transform .15s,border-color .15s}
 .card:hover{transform:translateY(-3px)}
@@ -98,12 +115,62 @@ main>*{animation:fade .25s ease-out}
 @media (prefers-reduced-motion:reduce){.card,main>*{transition:none;animation:none}.card:hover{transform:none}}
 /* Patch notes */
 .modal{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px}
-.modal .box{background:var(--surface);border:1px solid var(--line);border-radius:12px;max-width:560px;width:100%;max-height:85vh;overflow:auto;padding:20px}
+.modal .box{background:var(--surface);border:1px solid var(--line);border-radius:12px;max-width:520px;width:100%;max-height:85vh;overflow:auto;padding:20px}
 .pn{margin:0 0 18px}
 .pn h3{margin:0 0 6px;font:700 18px Georgia,serif}
 .pn ul{margin:0;padding-left:20px}
 .pn li{margin:3px 0}
 .pn.old{opacity:.7}
+/* UI pass */
+.card{box-shadow:0 2px 10px rgba(0,0,0,.25)}
+.card div:not(.prog){display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+#q{border-radius:999px;padding:10px 18px}
+nav button{border-radius:999px;padding:6px 14px}
+nav button.on{background:var(--surface)}
+h2.sec{display:flex;align-items:center;gap:10px}
+h2.sec::before{content:"";width:4px;height:1em;background:var(--accent);border-radius:2px;flex:none}
+#go,#save,#pnok{background:var(--accent);color:#141922;border-color:var(--accent);font-weight:700}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+#amb{position:fixed;inset:0;z-index:-1;background-size:cover;background-position:center top;opacity:0;transition:opacity .6s;pointer-events:none}
+#amb.on{opacity:.25}
+@media (max-width:600px){
+  nav{position:fixed;left:0;right:0;bottom:0;z-index:40;order:0;width:100%;gap:0;background:rgba(20,25,34,.97);border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
+  nav button{flex:1;border:0;border-radius:10px;padding:10px 4px;font-size:13px;color:var(--muted)}
+  nav button.on{background:transparent;color:var(--accent);font-weight:700}
+  main{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+  .attr{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+}
+body.theater nav{display:none}
+/* Episodes */
+.seasons{display:flex;gap:12px;overflow-x:auto;padding-bottom:10px;margin-bottom:18px}
+.scard{flex:0 0 150px;position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--line);cursor:pointer;background:var(--surface)}
+.scard img,.scard .noimg{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:#222a39}
+.scard.sel{outline:2px solid var(--text);outline-offset:-2px}
+.scard.cur{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.cbadge{display:none;position:absolute;top:8px;right:8px;z-index:2;background:var(--accent);color:#141922;font-size:12px;font-weight:700;padding:1px 8px;border-radius:999px}
+.scard.cur .cbadge{display:block}
+.sinfo{position:absolute;left:0;right:0;bottom:0;padding:24px 10px 8px;background:linear-gradient(0deg,rgba(0,0,0,.88),transparent);display:flex;flex-direction:column;font-size:12px;color:#ddd}
+.sinfo b{font-size:14px;color:#fff}
+@media (min-width:900px){.seasons{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));overflow:visible}.scard{flex:none}}
+.eplist{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin-bottom:28px}
+.epc{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column}
+.epc:hover{border-color:var(--accent)}
+.epc.cur{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.epc.soon{opacity:.6;cursor:default}
+.still{position:relative;aspect-ratio:16/9;background:#222a39}
+.still img{width:100%;height:100%;object-fit:cover;display:block}
+.bdg{position:absolute;top:8px;left:8px;font-size:12px;font-weight:700;border-radius:999px;padding:1px 10px;color:#fff}
+.bdg.ok{background:#1f7a3d}.bdg.wait{background:#7a5a1f}
+.eb{padding:12px;flex:1;display:flex;flex-direction:column}
+.eb h3{margin:0 0 4px;font-size:16px}
+.eb .meta{margin:0}
+.ov{margin:8px 0 0;font-size:14px;opacity:.85;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+.ov.open{display:block}
+.more{background:none;border:0;color:var(--accent);padding:4px 0;font-size:13px;align-self:flex-start}
+.ea{margin-top:auto;display:flex;justify-content:flex-end;padding-top:8px}
+.wbtn{width:34px;height:34px;padding:0;border-radius:50%}
+.wbtn.on{background:var(--accent);color:#141922;border-color:var(--accent)}
+#epSel{padding:9px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--text);font-size:15px;width:100%;max-width:420px;margin-bottom:24px}
 /* Theater mode: in-page full screen, keeps our controls (iPhone friendly) */
 #texit{display:none}
 body.theater{overflow:hidden}
@@ -131,12 +198,13 @@ body.theater #next{position:fixed;left:50%;transform:translateX(-50%);bottom:cal
 </header>
 <button id="texit" aria-label="Exit theater mode">✕</button>
 <button id="tnext">Next ▶</button>
+<div id="amb"></div>
 <main id="app"></main>
 <p class="hint">Press / to search, F for fullscreen, Esc to go back.</p>
 <p class="attr">This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
 
 <script>
-const APP_VERSION = '16';
+const APP_VERSION = '19';
 const IMG = 'https://image.tmdb.org/t/p/';
 const app = document.getElementById('app');
 const q = document.getElementById('q');
@@ -144,7 +212,7 @@ const backBtn = document.getElementById('back');
 let key = '', tab = 'all', current = null, lastSave = 0, filt = { genre: '', year: '', sort: 'popular' }, genres = {}, nextTimer = null, lastCheck = 0, lang = 'en-US';
 try { key = localStorage.getItem('tmdb_key') || ''; lang = localStorage.getItem('lang') || 'en-US'; } catch (e) {}
 
-const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c] || c));
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const cache = new Map();
 const api = (path, params = '') => {
   const url = `https://api.themoviedb.org/3${path}?api_key=${key}&language=${lang}${params}`;
@@ -160,7 +228,7 @@ const api = (path, params = '') => {
 };
 const skel = (n = 12) => '<div class="grid">' + '<div class="sk"></div>'.repeat(n) + '</div>';
 const emptyState = (t, h) => `<div class="empty"><i></i><h2 class="sec">${t}</h2><p class="meta">${h}</p></div>`;
-const clearHash = () => { document.body.classList.remove('theater', 'thide'); if (location.hash) history.replaceState(null, '', location.pathname + location.search); };
+const clearHash = () => { document.body.classList.remove('theater', 'thide'); document.getElementById('amb').classList.remove('on'); if (location.hash) history.replaceState(null, '', location.pathname + location.search); };
 const fmt = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
 /* ---- Continue watching (stored in this browser) ---- */
@@ -180,7 +248,10 @@ window.addEventListener('message', ev => {
   if (typeof p === 'string') { try { p = JSON.parse(p); } catch (e) { return; } }
   if (!p || !p.event) return;
   const now = Date.now();
-  if (p.event === 'ended') { saveProgress(0, 0, true); nextUp(); }
+  if (p.event === 'ended') {
+    if (current && current.type === 'tv') { setW(current.id, current.s, current.e, true); if (epRedraw) epRedraw(); }
+    saveProgress(0, 0, true); nextUp();
+  }
   else if (p.event === 'pause' || (p.event === 'timeupdate' && now - lastSave > 5000)) {
     lastSave = now; saveProgress(p.currentTime || 0, p.duration || 0, false);
   }
@@ -228,6 +299,7 @@ async function home() {
   if (tab === 'list') return listView();
   app.innerHTML = skel();
   try {
+    if (tab === 'all') { await homeView(); return; }
     const mt = tab === 'movie' || tab === 'tv';
     const gp = (mt && !genres[tab]) ? api(`/genre/${tab}/list`).then(r => r.genres).catch(() => []) : null;
     const filtered = mt && (filt.genre || filt.year || filt.sort !== 'popular');
@@ -242,6 +314,40 @@ async function home() {
     const names = { all: 'Trending this week', movie: 'Trending movies', tv: 'Trending series' };
     render(d.results, filtered ? 'Filtered results' : names[tab], true);
   } catch (e) { showSetup(e.message); }
+}
+
+async function homeView() {
+  const paths = ['/trending/all/day', '/trending/all/week', '/movie/now_playing', '/tv/popular', '/movie/popular', '/movie/top_rated', '/tv/top_rated'];
+  const rs = await Promise.allSettled(paths.map(x => api(x)));
+  if (rs.every(r => r.status === 'rejected')) throw rs[0].reason;
+  const L = (i, t) => (rs[i].status === 'fulfilled' ? rs[i].value.results : []).filter(x => x.poster_path).map(x => ({ ...x, media_type: x.media_type || t }));
+  const day = L(0), week = L(1), now = L(2, 'movie'), ps = L(3, 'tv'), pm = L(4, 'movie'), tm = L(5, 'movie'), ts = L(6, 'tv');
+  const pool = day.filter(x => x.backdrop_path).slice(0, 6);
+  const hero = pool[Math.floor(Math.random() * pool.length)];
+  const cardH = i => {
+    const type = i.media_type || 'movie', name = i.title || i.name, year = (i.release_date || i.first_air_date || '').slice(0, 4);
+    return `<div class="card" tabindex="0" data-type="${type}" data-id="${i.id}">${i.vote_average > 0 ? `<b class="rt">★ ${i.vote_average.toFixed(1)}</b>` : ''}<img loading="lazy" decoding="async" src="${IMG}w342${i.poster_path}" alt="${esc(name)}"><div>${esc(name)}<small>${type === 'tv' ? 'Series' : 'Movie'}${year ? ' · ' + year : ''}</small></div></div>`;
+  };
+  const row = (t, l) => l.length ? `<section class="row"><div class="hd"><h2 class="sec">${t}</h2></div><div class="railwrap"><button class="arr l" aria-label="Scroll left">‹</button><div class="rail">${l.slice(0, 20).map(cardH).join('')}</div><button class="arr r" aria-label="Scroll right">›</button></div></section>` : '';
+  let heroHtml = '';
+  if (hero) {
+    const ov = hero.overview || '', bw = innerWidth > 700 ? 'w1280' : 'w780';
+    heroHtml = `<section class="hero" style="background-image:linear-gradient(0deg,rgba(20,25,34,.92),rgba(20,25,34,.1) 70%),linear-gradient(90deg,rgba(20,25,34,.75),rgba(20,25,34,0) 70%),url(${IMG}${bw}${hero.backdrop_path})"><div class="hero-in"><span class="meta">Trending today</span><h1 dir="auto">${esc(hero.title || hero.name)}</h1><p dir="auto">${esc(ov.slice(0, 220))}${ov.length > 220 ? '…' : ''}</p><button class="primary" id="heroplay">▶ Watch</button><button id="sur">Surprise me</button></div></section>`;
+  }
+  const html = heroHtml + cwRow().replace('<div class="grid">', '<div class="rail">') +
+    row('Trending today', day) + row('Trending this week', week) + row('In theaters now', now) +
+    row('Popular series', ps) + row('Popular movies', pm) + row('Top rated movies', tm) + row('Top rated series', ts);
+  backBtn.style.display = 'none'; clearHash();
+  app.innerHTML = html || emptyState('Nothing to show', 'Check your connection and try again.');
+  bindCards();
+  const hp = document.getElementById('heroplay');
+  if (hp) hp.onclick = () => watch(hero.media_type || 'movie', hero.id);
+  const sb = document.getElementById('sur'); if (sb) sb.onclick = surprise;
+  app.querySelectorAll('.railwrap').forEach(w => {
+    const r = w.querySelector('.rail');
+    w.querySelector('.l').onclick = () => r.scrollBy({ left: -r.clientWidth * 0.85, behavior: 'smooth' });
+    w.querySelector('.r').onclick = () => r.scrollBy({ left: r.clientWidth * 0.85, behavior: 'smooth' });
+  });
 }
 
 function cwRow() {
@@ -350,7 +456,7 @@ function bindBackup() {
   const uc = document.getElementById('upchk'); if (uc) uc.onclick = () => checkUpdate(true);
   const say = t => { const m = document.getElementById('bkmsg'); if (m) m.textContent = t; };
   if (exp) exp.onclick = () => {
-    const data = { app: 'screenroom', v: 1, key, fav: lsGet('fav'), hist: lsGet('hist'), cw: getCW() };
+    const data = { app: 'screenroom', v: 1, key, fav: lsGet('fav'), hist: lsGet('hist'), cw: getCW(), watched: getW() };
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
     a.download = 'screenroom-backup.json';
@@ -372,6 +478,11 @@ function bindBackup() {
           lsSet(k, out);
         };
         merge('fav', d.fav, false); merge('hist', d.hist, false); merge('cw', d.cw, true);
+        if (d.watched && typeof d.watched === 'object') {
+          const w = getW();
+          Object.keys(d.watched).forEach(k => { w[k] = [...new Set([...(w[k] || []), ...(d.watched[k] || [])])]; });
+          try { localStorage.setItem('watched', JSON.stringify(w)); } catch (e2) {}
+        }
         if (d.key && !key) { key = String(d.key); try { localStorage.setItem('tmdb_key', key); } catch (e) {} }
         if (tab === 'list') listView(); else if (key) home();
         say('Backup imported.');
@@ -421,6 +532,7 @@ function embedUrl(type, id, s, e, t) {
 
 async function watch(type, id, res = {}) {
   if (!key) return showSetup();
+  epRedraw = null;
   clearInterval(nextTimer);
   app.innerHTML = '<div class="player sk"></div>';
   try {
@@ -433,6 +545,8 @@ async function watch(type, id, res = {}) {
     const s = res.s || 1, e = res.e || 1, t = res.t || 0;
     current = { type, id, name, poster: d.poster_path, s, e, seasons: d.number_of_seasons };
     addHist(current);
+    const amb = document.getElementById('amb');
+    if (d.backdrop_path) { amb.style.backgroundImage = `url(${IMG}w300${d.backdrop_path})`; amb.classList.add('on'); } else amb.classList.remove('on');
     document.body.classList.toggle('tv', type === 'tv');
     history.replaceState(null, '', location.pathname + location.search + '#' + type + '/' + id);
     backBtn.style.display = 'block';
@@ -445,13 +559,13 @@ async function watch(type, id, res = {}) {
         <h2 dir="auto">${esc(name)}</h2>
         <p class="meta">${type === 'tv' ? 'Series' : 'Movie'}${year ? ' · ' + year : ''}${dur ? ' · ' + dur : ''}${seasonsTxt}${d.vote_average ? ' · ★ ' + d.vote_average.toFixed(1) : ''}</p>
         <div class="chips">${(d.genres || []).map(g => `<span>${esc(g.name)}</span>`).join('')}</div>
-        <button id="fav" class="${isFav(type, id) ? 'on' : ''}">${isFav(type, id) ? '♥ In my list' : '♡ Add to my list'}</button> <button id="share">Share</button> <button id="dl">Download</button> <button id="theater">Theater mode</button>
-        ${type === 'tv' ? `<div class="ep">Season <input id="s" type="number" min="1" value="${s}"> Episode <input id="e" type="number" min="1" value="${e}"> <button id="go">Play</button> <button id="nextep">Next ▶</button></div>` : ''}
+        <div class="acts"><button id="fav" class="${isFav(type, id) ? 'on' : ''}">${isFav(type, id) ? '♥ In my list' : '♡ Add to my list'}</button> <button id="share">Share</button> <button id="theater">Theater mode</button></div>
+        ${type === 'tv' ? '<div class="ep"><span id="epnow" class="meta"></span><button id="nextep">Next ▶</button></div>' : ''}
         <p dir="auto">${esc(d.overview)}</p>
-        <div class="sim" id="sim"></div>
-      </div></div>`;
+        
+      </div></div>
+      <div id="eps"></div><div class="sim" id="sim"></div>`;
     document.getElementById('theater').onclick = enterTheater;
-    document.getElementById('dl').onclick = () => showDownloadModal(type, id, current.s, current.e, name);
     document.getElementById('share').onclick = async ev => {
       const url = location.href;
       try {
@@ -465,62 +579,8 @@ async function watch(type, id, res = {}) {
       ev.target.classList.toggle('on', on);
       ev.target.textContent = on ? '♥ In my list' : '♡ Add to my list';
     };
-    if (type === 'tv') document.getElementById('nextep').onclick = nextEpisodeNow;
-    if (type === 'tv') document.getElementById('go').onclick = () => {
-      current.s = +document.getElementById('s').value || 1;
-      current.e = +document.getElementById('e').value || 1;
-      document.getElementById('frame').src = embedUrl(type, id, current.s, current.e, 0);
-    };
+    if (type === 'tv') { document.getElementById('nextep').onclick = nextEpisodeNow; loadEpisodes(d); }
   } catch (err) { app.innerHTML = `<p class="msg">${esc(err.message)}</p>`; }
-}
-
-function showDownloadModal(type, id, s, e, name) {
-  if (document.getElementById('dlm')) return;
-  const cleanName = name.replace(/[<>:"/\|?*]+/g, '').trim() + (type === 'tv' ? `_S${s}E${e}` : '');
-  const filename = `${cleanName}.mp4`;
-  const cmd = `$videoUrl = "PUT_YOUR_M3U8_URL_HERE"; $exe = "$HOME\yt-dlp.exe"; if(!(Test-Path $exe)){ Write-Host "Downloading yt-dlp..." -ForegroundColor Cyan; Invoke-WebRequest "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -OutFile $exe }; try { & $exe --referer "https://vidy.st/" --add-header "Origin: https://vidy.st" --hls-prefer-native -o "${filename}" $videoUrl } catch { Write-Host "\`n[!] Download error: If you get HTTP Error 502 Bad Gateway or 403 Forbidden, your .m3u8 token expired. Refresh the video page and regrab a fresh stream link!" -ForegroundColor Red }`;
-
-  const m = document.createElement('div');
-  m.id = 'dlm'; m.className = 'modal';
-  m.innerHTML = `<div class="box" role="dialog" aria-label="Download options">
-    <h2 class="sec">Download Title</h2>
-    <p class="meta">Target: <b>${esc(name)}</b> ${type === 'tv' ? `(S${s} E${e})` : ''}</p>
-    
-    <div style="margin-bottom:14px">
-      <p class="meta" style="margin-bottom:6px"><b>1. Paste & Run in PowerShell</b> (Auto-fetches yt-dlp):</p>
-      <textarea readonly style="width:100%;height:115px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font-family:monospace;font-size:12px;resize:none">${esc(cmd)}</textarea>
-      <button id="dlcopy" style="margin-top:8px">Copy command</button>
-    </div>
-
-    <div style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:14px;font-size:14px">
-      <p style="margin:0 0 6px;color:var(--accent);font-weight:600">⚠️ Common Download Errors & Solutions:</p>
-      <ul style="margin:0;padding-left:18px;color:var(--muted);font-size:13px;line-height:1.4">
-        <li><b>HTTP Error 502 (Bad Gateway) / 403 (Forbidden):</b> The .m3u8 token expired! Simply refresh the video page on Screenroom and regrab a fresh link.</li>
-        <li><b>Path or command errors:</b> This command auto-downloads <code>yt-dlp.exe</code> directly into your User folder (<code>$HOME\yt-dlp.exe</code>) so no system setup is required.</li>
-      </ul>
-    </div>
-
-    <div style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:16px;font-size:14px">
-      <p style="margin:0 0 6px;color:var(--accent);font-weight:600">⚡ Want 1-click .m3u8 link sniffing?</p>
-      <p style="margin:0 0 8px;color:var(--muted)">Install a browser extension like <b>HLS Downloader</b> or <b>Simple Media Sniffer</b>. When playing the video inside Screenroom, the extension will automatically detect and list the direct stream link without opening Developer Tools!</p>
-    </div>
-
-    <div style="display:flex;gap:10px;justify-content:flex-end">
-      <button id="dlclose">Close</button>
-    </div>
-  </div>`;
-  document.body.appendChild(m);
-  const close = () => m.remove();
-  document.getElementById('dlclose').onclick = close;
-  document.getElementById('dlcopy').onclick = async () => {
-    try {
-      await navigator.clipboard.writeText(cmd);
-      const btn = document.getElementById('dlcopy');
-      btn.textContent = 'Copied!';
-      setTimeout(() => { btn.textContent = 'Copy command'; }, 2000);
-    } catch (e) {}
-  };
-  m.onclick = ev => { if (ev.target === m) close(); };
 }
 
 let tTimer;
@@ -549,14 +609,91 @@ async function nextEpisodeNow() {
   } catch (err) {}
 }
 
+let epRedraw = null, epView = 'grid';
+try { epView = localStorage.getItem('epview') || 'grid'; } catch (e) {}
+const getW = () => { try { return JSON.parse(localStorage.getItem('watched') || '{}'); } catch (e) { return {}; } };
+const isW = (id, s, e) => (getW()[id] || []).includes(s + 'x' + e);
+function setW(id, s, e, on) {
+  const w = getW(), l = new Set(w[id] || []), k = s + 'x' + e;
+  if (on) l.add(k); else l.delete(k);
+  w[id] = [...l];
+  try { localStorage.setItem('watched', JSON.stringify(w)); } catch (x) {}
+}
+
+async function loadEpisodes(d) {
+  const box = document.getElementById('eps');
+  if (!box || !current) return;
+  const id = current.id;
+  const seasons = (d.seasons || []).filter(x => x.episode_count > 0);
+  if (!seasons.length) return;
+  let showS = current.s;
+  const en = document.getElementById('epnow'); if (en) en.textContent = `Now playing: S${current.s} E${current.e}`;
+  box.innerHTML = '<div class="hd"><h2 class="sec">Seasons</h2></div><div class="seasons">' + seasons.map(x => `<div class="scard" tabindex="0" data-s="${x.season_number}"><span class="cbadge">Current</span>${x.poster_path ? `<img loading="lazy" decoding="async" src="${IMG}w342${x.poster_path}" alt="">` : '<div class="noimg"></div>'}<div class="sinfo"><b>${esc(x.name)}</b><span>${esc((x.air_date || '').slice(0, 4))}</span><span>${x.episode_count} episodes</span></div></div>`).join('') +
+    '</div><div class="hd"><h2 class="sec" id="eptitle"></h2><button id="epToggle"></button></div><div id="eplist"></div>';
+  const alive = () => document.getElementById('eps') && current && String(current.id) === String(id);
+  const play = (s, e) => { playEpisode(s, e); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const mark = () => {
+    box.querySelectorAll('.scard').forEach(c => { const n = +c.dataset.s; c.classList.toggle('sel', n === showS); c.classList.toggle('cur', n === current.s); });
+    const cur = seasons.find(x => x.season_number === showS);
+    document.getElementById('eptitle').textContent = cur ? cur.name : 'Episodes';
+    document.getElementById('epToggle').textContent = epView === 'grid' ? 'Show dropdown' : 'Show episode grid';
+  };
+  const drawList = async () => {
+    mark();
+    const list = document.getElementById('eplist');
+    list.innerHTML = '<p class="msg">Loading…</p>';
+    let sd;
+    try { sd = await api(`/tv/${id}/season/${showS}`); } catch (e) { sd = { episodes: [] }; }
+    if (!alive()) return;
+    const eps = sd.episodes || [];
+    if (!eps.length) { list.innerHTML = '<p class="msg">No episodes found for this season.</p>'; return; }
+    if (epView === 'drop') {
+      list.innerHTML = `<p class="meta">Select an episode</p><select id="epSel"><option value="">Choose an episode</option>${eps.map(x => `<option value="${x.episode_number}"${current.s === showS && current.e === x.episode_number ? ' selected' : ''}>${x.episode_number}. ${esc(x.name)}</option>`).join('')}</select>`;
+      document.getElementById('epSel').onchange = ev => { if (ev.target.value) play(showS, +ev.target.value); };
+      return;
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    list.innerHTML = '<div class="eplist">' + eps.map(x => {
+      const aired = x.air_date && x.air_date <= today, w = isW(id, showS, x.episode_number), ov = x.overview || '';
+      return `<article class="epc${current.s === showS && current.e === x.episode_number ? ' cur' : ''}${aired ? '' : ' soon'}" data-e="${x.episode_number}">
+        <div class="still">${x.still_path ? `<img loading="lazy" decoding="async" src="${IMG}w300${x.still_path}" alt="">` : ''}<span class="bdg ${aired ? 'ok' : 'wait'}">${aired ? 'Aired' : 'Upcoming'}</span></div>
+        <div class="eb"><h3 dir="auto">${x.episode_number}. ${esc(x.name)}</h3><p class="meta">${esc(x.air_date || 'TBA')}${x.runtime ? ' · ' + x.runtime + ' min' : ''}</p>
+        <p class="ov" dir="auto">${esc(ov)}</p>${ov.length > 110 ? '<button class="more">See more</button>' : ''}
+        <div class="ea"><button class="wbtn${w ? ' on' : ''}" aria-label="Mark as watched">✓</button></div></div></article>`;
+    }).join('') + '</div>';
+    list.querySelectorAll('.epc').forEach(c => {
+      const n = +c.dataset.e;
+      c.onclick = ev => { if (ev.target.closest('.more, .wbtn') || c.classList.contains('soon')) return; play(showS, n); };
+      c.querySelector('.wbtn').onclick = ev => {
+        ev.stopPropagation();
+        const on = !ev.currentTarget.classList.contains('on');
+        setW(id, showS, n, on); ev.currentTarget.classList.toggle('on', on);
+      };
+      const mb = c.querySelector('.more');
+      if (mb) mb.onclick = ev => {
+        ev.stopPropagation();
+        const o = c.querySelector('.ov'); o.classList.toggle('open');
+        ev.currentTarget.textContent = o.classList.contains('open') ? 'See less' : 'See more';
+      };
+    });
+  };
+  box.querySelectorAll('.scard').forEach(c => { c.onclick = () => { showS = +c.dataset.s; drawList(); }; });
+  document.getElementById('epToggle').onclick = () => {
+    epView = epView === 'grid' ? 'drop' : 'grid';
+    try { localStorage.setItem('epview', epView); } catch (e) {}
+    drawList();
+  };
+  epRedraw = () => { if (alive()) { showS = current.s; drawList(); } };
+  drawList();
+}
+
 function playEpisode(s, e) {
   clearInterval(nextTimer);
   const nx = document.getElementById('next'); if (nx) nx.innerHTML = '';
   current.s = s; current.e = e;
-  const si = document.getElementById('s'), ei = document.getElementById('e');
-  if (si) si.value = s;
-  if (ei) ei.value = e;
+  const en = document.getElementById('epnow'); if (en) en.textContent = `Now playing: S${s} E${e}`;
   document.getElementById('frame').src = embedUrl('tv', current.id, s, e, 0);
+  if (epRedraw) epRedraw();
 }
 
 async function nextUp() {
@@ -588,11 +725,12 @@ function showNext(s, e) {
 
 // Newest entry first. Add a new entry at the top for every update.
 const PATCHNOTES = [
-  { v: '16', c: ['Setup Guard Fix: Navigation tabs, search, and title views now check for missing TMDB API key and redirect to setup screen instead of rendering blank.', 'Escape string fix in modal template string.'] },
-  { v: '15', c: ['PowerShell Bootstrap & Error Guard: Command template now includes top-level $videoUrl variable and auto-fetches yt-dlp.exe to user folder.', 'Added error handling to PowerShell output explaining 502/403 token expiration with instructions to regrab a fresh link.', 'Modal UI updated with clear troubleshooting section for HTTP errors.'] },
-  { v: '14', c: ['Phase 1 & 2 integration: Download modal now generates ready-to-run yt-dlp commands with clean filenames and native HLS flags.', 'Added a built-in yt-dlp installation guide and download link.', 'Added Phase 2 recommendation for 1-click .m3u8 stream sniffing browser extensions (like HLS Downloader).'] },
-  { v: '13', c: ['Added a Download button on movie and series pages to generate and copy a ready-to-use yt-dlp command for offline downloading.'] },
-  { v: '12', c: ['Theater mode: the ✕ now fades out after 3 seconds. Bring it back by tapping the top-left corner, or swipe back to leave.', 'New “Next ▶” button on series pages and in theater mode.', 'Faster: results are cached for a few minutes, posters start loading on touch, and initial load runs in parallel.'] },
+  { v: '19', c: ['Series pages: season cards (poster, year, number of episodes) with a Current badge, and episode cards with a picture, air date, runtime and synopsis.', 'Switch between the episode grid and a dropdown. Tap ✓ to mark an episode as watched (it is also marked when an episode ends).', 'Backup now includes watched episodes. Similar titles moved below the episode list.'] },
+  { v: '18', c: ['UI pass: tab bar at the bottom on phones (Home, Movies, Series, My list), pill-shaped tabs and search bar, accent bars on section titles.', 'Title pages: soft blurred backdrop behind the page, grouped action buttons, accent-colored Play button.', 'Cleaner poster captions (long titles are trimmed) and subtle card shadows.'] },
+  { v: '17', c: ['Home page restored: featured banner and scrolling rows (Trending today, Trending this week, In theaters now, Popular and Top rated series and movies).', 'The Download button is removed. Everything else from version 16 is kept.'] },
+  { v: '16', c: ['Setup guard: tabs, search and title pages now send you to the key screen instead of showing a blank page when the TMDB key is missing.'] },
+  { v: '13 to 15', c: ['Home page rebuilt with a banner and scrolling rows, wider layout on desktop.', 'A Download helper was tried in these versions and has been removed in version 17.'] },
+  { v: '12', c: ['Theater mode: the ✕ now fades out after 3 seconds. Tap the top-left corner to bring it back, or swipe back to leave.', 'New “Next ▶” button on series pages and in theater mode.', 'Faster: results are kept for a few minutes, a title starts loading the moment you touch its poster, and the first screen loads in parallel.'] },
   { v: '11', c: ['Design pass: posters lift slightly on hover, pages fade in smoothly.', 'Title pages now show the runtime (or number of seasons) and genre tags.'] },
   { v: '10', c: ['Patch notes: this screen appears after every update and keeps the history of past versions.'] },
   { v: '9', c: ['Theater mode: the player fills the whole screen while staying in the app, with a ✕ to exit. Made for iPhone.', 'Share this app button at the bottom of My list.'] },
