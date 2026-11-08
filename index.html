@@ -201,10 +201,10 @@ body.theater #next{position:fixed;left:50%;transform:translateX(-50%);bottom:cal
 <div id="amb"></div>
 <main id="app"></main>
 <p class="hint">Press / to search, F for fullscreen, Esc to go back.</p>
-<p class="attr">This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
+<p class="attr">This product uses the TMDB API but is not endorsed or certified by TMDB. <span id="contact"></span></p>
 
 <script>
-const APP_VERSION = '19';
+const APP_VERSION = '20';
 const IMG = 'https://image.tmdb.org/t/p/';
 const app = document.getElementById('app');
 const q = document.getElementById('q');
@@ -213,6 +213,16 @@ let key = '', tab = 'all', current = null, lastSave = 0, filt = { genre: '', yea
 try { key = localStorage.getItem('tmdb_key') || ''; lang = localStorage.getItem('lang') || 'en-US'; } catch (e) {}
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let BLOCKED = new Set(), CONTACT = '';
+const isBlocked = (type, id) => BLOCKED.has(type + '/' + id);
+async function loadBlocked() {
+  try {
+    const r = await fetch('blocked.json?v=' + Date.now(), { cache: 'no-store' });
+    if (r.ok) { const j = await r.json(); BLOCKED = new Set((j.blocked || []).map(String)); CONTACT = String(j.email || ''); }
+  } catch (e) {}
+  const c = document.getElementById('contact');
+  if (c) c.innerHTML = CONTACT ? `Rights holders: to request removal of a title, email <a href="mailto:${esc(CONTACT)}">${esc(CONTACT)}</a>.` : '';
+}
 const cache = new Map();
 const api = (path, params = '') => {
   const url = `https://api.themoviedb.org/3${path}?api_key=${key}&language=${lang}${params}`;
@@ -221,6 +231,12 @@ const api = (path, params = '') => {
   const p = fetch(url).then(r => {
     if (!r.ok) throw new Error(r.status === 401 ? 'Invalid TMDB API key.' : 'TMDB error ' + r.status);
     return r.json();
+  }).then(j => {
+    if (j && Array.isArray(j.results)) {
+      const t = path.includes('/tv') ? 'tv' : path.includes('/movie') ? 'movie' : null;
+      j.results = j.results.filter(x => !isBlocked(x.media_type || t, x.id));
+    }
+    return j;
   });
   cache.set(url, { t: Date.now(), p });
   p.catch(() => cache.delete(url));
@@ -351,7 +367,7 @@ async function homeView() {
 }
 
 function cwRow() {
-  const l = getCW().filter(x => tab === 'all' || x.type === tab);
+  const l = getCW().filter(x => (tab === 'all' || x.type === tab) && !isBlocked(x.type, x.id));
   if (!l.length) return '';
   return `<div class="row"><h2 class="sec">Continue watching</h2><div class="grid">` + l.map(x => `
     <div class="card" tabindex="0" data-type="${x.type}" data-id="${x.id}" data-s="${x.s}" data-e="${x.e}" data-t="${x.time}">
@@ -499,7 +515,7 @@ function listView() {
     l.filter(x => x.poster).map(x => `<div class="card" tabindex="0" data-type="${x.type}" data-id="${x.id}">
       <img loading="lazy" decoding="async" src="${IMG}w342${x.poster}" alt="${esc(x.name)}">
       <div>${esc(x.name)}<small>${x.type === 'tv' ? 'Series' : 'Movie'}</small></div></div>`).join('') + '</div></div>' : '';
-  const body = sec('Favorites', lsGet('fav')) + sec('History', lsGet('hist'), '<button id="clr">Clear history</button>')
+  const body = sec('Favorites', lsGet('fav').filter(x => !isBlocked(x.type, x.id))) + sec('History', lsGet('hist').filter(x => !isBlocked(x.type, x.id)), '<button id="clr">Clear history</button>')
     || emptyState('Your list is empty', 'Open a title and tap “♡ Add to my list” to keep it here.');
   app.innerHTML = body + backupBox();
   bindCards();
@@ -532,6 +548,11 @@ function embedUrl(type, id, s, e, t) {
 
 async function watch(type, id, res = {}) {
   if (!key) return showSetup();
+  if (isBlocked(type, id)) {
+    app.innerHTML = emptyState('Title unavailable', 'This title has been removed at a rights holder’s request.');
+    backBtn.style.display = 'block';
+    return;
+  }
   epRedraw = null;
   clearInterval(nextTimer);
   app.innerHTML = '<div class="player sk"></div>';
@@ -725,6 +746,7 @@ function showNext(s, e) {
 
 // Newest entry first. Add a new entry at the top for every update.
 const PATCHNOTES = [
+  { v: '20', c: ['Removal requests: titles listed in the new blocked.json file are hidden everywhere in the app, and the footer can show a contact email for rights holders. Edit blocked.json on GitHub to hide a title instantly, without touching index.html.'] },
   { v: '19', c: ['Series pages: season cards (poster, year, number of episodes) with a Current badge, and episode cards with a picture, air date, runtime and synopsis.', 'Switch between the episode grid and a dropdown. Tap ✓ to mark an episode as watched (it is also marked when an episode ends).', 'Backup now includes watched episodes. Similar titles moved below the episode list.'] },
   { v: '18', c: ['UI pass: tab bar at the bottom on phones (Home, Movies, Series, My list), pill-shaped tabs and search bar, accent bars on section titles.', 'Title pages: soft blurred backdrop behind the page, grouped action buttons, accent-colored Play button.', 'Cleaner poster captions (long titles are trimmed) and subtle card shadows.'] },
   { v: '17', c: ['Home page restored: featured banner and scrolling rows (Trending today, Trending this week, In theaters now, Popular and Top rated series and movies).', 'The Download button is removed. Everything else from version 16 is kept.'] },
@@ -813,7 +835,7 @@ try { seenV = localStorage.getItem('seen') || ''; } catch (e) {}
 if (seenV !== APP_VERSION) { if (key) showPatchNotes(); else { try { localStorage.setItem('seen', APP_VERSION); } catch (e) {} } }
 checkUpdate(false);
 const hm = location.hash.match(/^#(movie|tv)\/(\d+)$/);
-if (hm && key) watch(hm[1], hm[2]); else home();
+loadBlocked().then(() => { if (hm && key) watch(hm[1], hm[2]); else home(); });
 </script>
 </body>
 </html>
