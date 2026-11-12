@@ -568,10 +568,14 @@ function sendPartyChat(text) {
   const prof = getUserProfile();
   const packet = { type: 'chat', id: Math.random().toString(36).slice(2), name: prof.name, pfp: prof.pfp, text: clean, ts: Date.now() };
   appendChatMessage(packet, true);
+  let sent = false;
   if (party.role === 'host') {
-    party.conns.forEach(c => { if (c.open) try { c.send(packet); } catch (e) {} });
+    party.conns.forEach(c => { if (c.open) { try { c.send(packet); sent = true; } catch (e) {} } });
   } else if (party.hostConn && party.hostConn.open) {
-    try { party.hostConn.send(packet); } catch (e) {}
+    try { party.hostConn.send(packet); sent = true; } catch (e) {}
+  }
+  if (!sent && party.active) {
+    appendChatMessage({ sys: true, text: '⚠️ Message kept locally (waiting for peer connection to establish…)' }, false);
   }
 }
 
@@ -602,7 +606,7 @@ function updatePartyUI() {
   const chatBox = document.getElementById('party-chat');
   if (!bar) return;
   const prof = getUserProfile();
-  const profileHtml = `<div class="party-profile" title="Profile saved with your TMDB key">
+  const profileHtml = `<div class="party-profile" title="Profile saved with your Discord/TMDB profile">
     <img id="prof-pfp-img" src="${esc(prof.pfp)}" onerror="this.src='${DEFAULT_AVATAR}'" alt="Avatar">
     <input id="prof-name" value="${esc(prof.name)}" maxlength="24" placeholder="Username" aria-label="Chat username">
     <button id="prof-pfp-btn" type="button" style="padding:5px 8px;font-size:12px" title="Change profile picture">🖼 PFP</button>
@@ -624,7 +628,10 @@ function updatePartyUI() {
     bar.innerHTML = `<span class="party-badge">HOSTING PARTY</span>
       <span class="party-peers">${count} friend${count === 1 ? '' : 's'} connected</span>
       <button id="copyparty" class="party-btn">📋 Copy Discord Link</button>
-      <button id="syncnow" title="Force all friends to jump to your exact timestamp & episode">⚡ Force Sync</button>
+      <div style="display:flex;align-items:center;gap:4px">
+        <input id="synctime-in" type="text" placeholder="MM:SS" style="width:65px;padding:5px 8px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:13px" title="Enter minute:second to sync all friends">
+        <button id="syncnow" title="Force all friends to jump to this timestamp & episode">⚡ Sync Time</button>
+      </div>
       <button id="leaveparty">End Party</button>${profileHtml}`;
     bindProfileControls();
     document.getElementById('copyparty').onclick = async ev => {
@@ -635,9 +642,18 @@ function updatePartyUI() {
       } catch (e) { prompt('Copy this invite link for Discord:', getPartyUrl()); }
     };
     document.getElementById('syncnow').onclick = ev => {
+      const val = document.getElementById('synctime-in').value.trim();
+      let secs = 0;
+      if (val.includes(':')) {
+        const parts = val.split(':');
+        secs = (+parts[0] || 0) * 60 + (+parts[1] || 0);
+      } else {
+        secs = +val || 0;
+      }
+      party.lastTime = secs;
       broadcastPartyState(true);
       ev.target.textContent = '⚡ Synced!';
-      setTimeout(() => { if (ev.target) ev.target.textContent = '⚡ Force Sync'; }, 1500);
+      setTimeout(() => { if (ev.target) ev.target.textContent = '⚡ Sync Time'; }, 1500);
     };
     document.getElementById('leaveparty').onclick = leaveWatchParty;
   } else {
@@ -656,15 +672,18 @@ function updatePartyUI() {
   if (chatBox) {
     chatBox.style.display = 'flex';
     chatBox.classList.toggle('t-open', !!party.theaterChatOpen);
-    if (!chatBox.dataset.bound) {
-      chatBox.dataset.bound = '1';
+    if (!document.getElementById('chat-form')) {
       chatBox.innerHTML = `<div class="chat-head"><span>💬 Party Live Chat (Low-Latency P2P)</span><span style="font-weight:400;color:var(--muted);font-size:12px">Available in Theater & Normal view</span></div>
         <div id="chat-msgs" class="chat-msgs"></div>
         <form id="chat-form" class="chat-form" autocomplete="off">
           <input id="chat-input" type="text" maxlength="400" placeholder="Message the party…">
           <button type="submit">Send</button>
         </form>`;
-      document.getElementById('chat-form').onsubmit = ev => {
+    }
+    const cform = document.getElementById('chat-form');
+    if (cform && !cform.dataset.bound) {
+      cform.dataset.bound = '1';
+      cform.onsubmit = ev => {
         ev.preventDefault();
         const inp = document.getElementById('chat-input');
         if (inp && inp.value.trim()) {
@@ -858,9 +877,18 @@ function showSetup(err) {
   activeView = { kind: 'setup' };
   backBtn.style.display = 'none'; clearHash();
   app.innerHTML = `<div class="setup">
-    <h2>Add your TMDB key</h2>
-    <p class="meta">Screenroom uses TMDB for search and posters. Get a free API key (v3) at themoviedb.org → Settings → API.</p>
+    <h2>Connect to Screenroom</h2>
+    <p class="meta">Log in instantly with your Discord account or paste a TMDB key.</p>
     ${err ? `<p style="color:#ff8a8a">${esc(err)}</p>` : ''}
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
+      <button id="discordlogin" style="background:#5865F2;color:#fff;border-color:#5865F2;font-weight:700;padding:12px;font-size:16px">🎮 Connect with Discord</button>
+      <div style="background:rgba(255,180,50,0.12);border:1px solid rgba(255,180,50,0.45);border-radius:8px;padding:10px 12px;font-size:13px;color:#ffd080;text-align:left;line-height:1.4">
+        ⚠️ <b>Shared Temporary TMDB Key:</b> Logging in with Discord or Demo Mode uses a shared temporary TMDB API key with limited rate quotas. For the best experience, replace it with your own free personal TMDB key below or in <b>My list → Backup & Key Management</b>.
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin:10px 0;color:var(--muted)">
+      <div style="flex:1;height:1px;background:var(--line)"></div><span>or use TMDB key</span><div style="flex:1;height:1px;background:var(--line)"></div>
+    </div>
     <input id="k" placeholder="Paste your TMDB API key">
     <div style="display:flex;gap:10px;justify-content:center;margin-top:10px">
       <button id="save">Save key</button>
@@ -880,6 +908,12 @@ function showSetup(err) {
     key = '5d0979bf39cd11dbb4d24177b8b4b76c';
     try { localStorage.setItem('tmdb_key', key); } catch (e) {}
     home();
+  };
+  const dlogin = document.getElementById('discordlogin');
+  if (dlogin) dlogin.onclick = () => {
+    const clientId = '1570548719110328420';
+    const redirectUri = encodeURIComponent('https://coolr2loulou-source.github.io/screenroom/');
+    window.location.href = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=token&scope=identify`;
   };
 }
 
@@ -1054,7 +1088,15 @@ function statsDashboard() {
 }
 
 function backupBox() {
+  const isSharedKey = !key || key === '5d0979bf39cd11dbb4d24177b8b4b76c';
   return `<div class="row"><h2 class="sec">Backup & Key Management</h2>
+    ${isSharedKey ? `<div style="background:rgba(255,180,50,0.12);border:1px solid rgba(255,180,50,0.45);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#ffd080;line-height:1.45">
+      ⚠️ <b>Warning — Shared Temporary Key Active:</b> You are currently using the shared temporary TMDB API key. Because this key is shared across temporary/Discord sessions, it may hit rate limits. It is strongly recommended to replace it with your own personal key from <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:underline">themoviedb.org</a>.
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <input id="newtmdbkey" placeholder="Paste your personal TMDB API key" style="flex:1;min-width:200px;padding:7px 10px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:13px">
+        <button id="savetmdbkey" style="background:var(--accent);color:#141922;border-color:var(--accent);font-weight:700;padding:7px 12px;font-size:13px">Save Personal Key</button>
+      </div>
+    </div>` : ''}
     <p class="meta">Move your list, history and progress to another device. The file also contains your TMDB key, so keep it private.</p>
     <div class="bk"><button id="exp">Export backup</button><button id="imp">Import backup</button><button id="forgetkey" style="background:#4a2222;border-color:#7a3333">Forget TMDB Key (Logout)</button></div>
     <input id="impf" type="file" accept=".json,application/json" hidden>
@@ -1115,6 +1157,18 @@ function bindBackup() {
     customBrand = bi.value.trim() || 'Screenroom';
     applyBranding(customBrand);
     try { localStorage.setItem('custom_brand', customBrand); } catch (e) {}
+  };
+
+  const stk = document.getElementById('savetmdbkey');
+  if (stk) stk.onclick = () => {
+    const val = (document.getElementById('newtmdbkey')?.value || '').trim();
+    if (!val) return;
+    key = val;
+    try { localStorage.setItem('tmdb_key', key); } catch (e) {}
+    syncProfileFromTmdbAccount();
+    listView();
+    const m = document.getElementById('bkmsg');
+    if (m) m.textContent = 'Personal TMDB API key saved!';
   };
 
   const fk = document.getElementById('forgetkey');
@@ -1784,6 +1838,7 @@ function showNext(s, e) {
 }
 
 const PATCHNOTES = [
+  { v: '30', c: ['Added Discord Login option ("Connect with Discord") to sign in instantly with Discord username and avatar without needing to manually find a TMDB key. Enhanced Watch Party streaming & synchronization with manual timestamp sync controls (MM:SS) to bypass iframe embedding restrictions, plus robust P2P chat and auto-reconnection.'] },
   { v: '29', c: ['Added serverless P2P Watch Party rooms (WebRTC) with one-click Discord invite links that sync episodes and timestamps, plus a low-latency live party chat (available in both normal and Theater mode) with custom username & profile picture saved per TMDB key.'] },
   { v: '28', c: ['Retained all v27 features, multi-source audio/subtitle streaming options (Vidy.st, Multiembed, Vidsrc), Demo Mode, Admin Panel, and quote splashes in a clean release build.'] },
   { v: '27', c: ['Fixed iPhone portrait header layout & bottom navigation spacing, added multi-step top-left Back button history, and fixed Theater Mode controls reappearing on iOS touch screens.'] },
@@ -1919,9 +1974,36 @@ let seenV = '';
 try { seenV = localStorage.getItem('seen') || ''; } catch (e) {}
 if (seenV !== APP_VERSION) { if (key) showPatchNotes(); else { try { localStorage.setItem('seen', APP_VERSION); } catch (e) {} } }
 checkUpdate(false);
+async function handleDiscordAuth() {
+  const hash = window.location.hash;
+  if (hash.includes('access_token=')) {
+    const params = new URLSearchParams(hash.substring(1));
+    const accessToken = params.get('access_token');
+    if (accessToken) {
+      try {
+        const res = await fetch('https://discord.com/api/users/@me', {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        if (res.ok) {
+          const user = await res.json();
+          const username = user.global_name || user.username || 'Discord User';
+          const avatarUrl = user.avatar 
+            ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=128` 
+            : DEFAULT_AVATAR;
+          saveUserProfile(username, avatarUrl);
+          key = '5d0979bf39cd11dbb4d24177b8b4b76c';
+          try { localStorage.setItem('tmdb_key', key); } catch (e) {}
+        }
+      } catch (e) {}
+      history.replaceState(null, '', location.pathname + location.search);
+    }
+  }
+}
+
 const hm = location.hash.match(/^#(movie|tv)\/(\d+)(?:\/(\d+)\/(\d+))?(?:\?(.*))?$/);
 if (key) syncProfileFromTmdbAccount();
-loadBlocked().then(() => {
+loadBlocked().then(async () => {
+  await handleDiscordAuth();
   if (hm) {
     const [, mType, mId, mS, mE, mQuery] = hm;
     const qp = new URLSearchParams(mQuery || '');
