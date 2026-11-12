@@ -213,6 +213,32 @@ body.theater nav{display:none}
 #amb{position:fixed;inset:0;z-index:-1;background-size:cover;background-position:center top;opacity:0;transition:opacity .6s;pointer-events:none}
 #amb.on{opacity:var(--bg-opacity)}
 
+.party-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:12px}
+.party-bar.active{border-color:var(--accent);box-shadow:0 0 12px rgba(255,122,69,0.2)}
+.party-badge{background:var(--accent);color:#141922;font-weight:700;font-size:12px;padding:2px 8px;border-radius:999px}
+.party-peers{font-size:13px;color:var(--muted)}
+.party-btn{background:var(--accent);color:#141922;border-color:var(--accent);font-weight:700}
+.party-profile{display:flex;align-items:center;gap:8px;margin-left:auto}
+.party-profile img{width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid var(--accent);background:#222a39}
+.party-profile input{padding:5px 9px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:13px;width:120px}
+.party-chat{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin:12px 0;display:flex;flex-direction:column;overflow:hidden}
+.chat-head{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line);font-size:13px;font-weight:700}
+.chat-msgs{height:185px;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px;scroll-behavior:smooth}
+.cmsg{display:flex;gap:8px;align-items:flex-start;font-size:14px;line-height:1.35}
+.cmsg img{width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;background:#222a39;border:1px solid var(--line)}
+.cmsg-body{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:6px 10px;max-width:85%;word-break:break-word}
+.cmsg.me .cmsg-body{border-color:var(--accent)}
+.cmsg-meta{font-size:11px;color:var(--muted);margin-bottom:2px;display:flex;gap:6px;align-items:center}
+.cmsg-meta b{color:var(--text)}
+.cmsg-sys{text-align:center;font-size:12px;color:var(--muted);font-style:italic}
+.chat-form{display:flex;gap:8px;padding:8px 10px;border-top:1px solid var(--line);background:var(--surface)}
+.chat-form input{flex:1;min-width:0;padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:14px}
+.chat-form button{padding:7px 14px;border-radius:999px;background:var(--accent);color:#141922;border-color:var(--accent);font-weight:700;font-size:14px}
+#tchat-btn{display:none}
+body.theater #tchat-btn{display:flex;align-items:center;justify-content:center;position:fixed;top:calc(12px + env(safe-area-inset-top));right:calc(12px + env(safe-area-inset-right));z-index:80;height:42px;padding:0 14px;border-radius:999px;font-size:14px;font-weight:600;background:rgba(20,25,34,.88);color:#fff;border:1px solid rgba(255,255,255,.25);cursor:pointer;transition:opacity .25s;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+body.theater.thide #tchat-btn{opacity:0;pointer-events:none}
+body.theater .party-chat.t-open{position:fixed;top:calc(62px + env(safe-area-inset-top));right:calc(12px + env(safe-area-inset-right));bottom:calc(70px + env(safe-area-inset-bottom));width:min(340px,88vw);z-index:85;margin:0;background:rgba(20,25,34,.88);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-color:var(--accent);box-shadow:0 8px 30px rgba(0,0,0,.6)}
+body.theater .party-chat.t-open .chat-msgs{flex:1;height:auto}
 /* Theater Mode Controls & iOS Touch Wake Overlay */
 #texit,#tnext,#tguard{display:none}
 body.theater{overflow:hidden}
@@ -223,6 +249,7 @@ body.theater.thide #texit,body.theater.thide #tnext{opacity:0;pointer-events:non
 body.theater.thide #tguard{display:block;position:fixed;top:0;left:0;right:0;height:calc(88px + env(safe-area-inset-top));z-index:75;background:transparent}
 body.theater #next{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));z-index:80;width:min(92vw,460px)}
 </style>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
 <canvas id="confetti-canvas"></canvas>
@@ -245,6 +272,7 @@ body.theater #next{position:fixed;left:50%;transform:translateX(-50%);bottom:cal
 <div id="tguard" aria-hidden="true"></div>
 <button id="texit" aria-label="Exit theater mode">✕</button>
 <button id="tnext">Next ▶</button>
+<button id="tchat-btn">💬 Chat</button>
 <button id="totop" aria-label="Scroll to top">↑ Top</button>
 <div id="amb"></div>
 <main id="app"></main>
@@ -252,7 +280,7 @@ body.theater #next{position:fixed;left:50%;transform:translateX(-50%);bottom:cal
 <p class="attr">This product uses the TMDB API but is not endorsed or certified by TMDB. <span id="contact"></span></p>
 
 <script>
-const APP_VERSION = '27';
+const APP_VERSION = '29';
 const IMG = 'https://image.tmdb.org/t/p/';
 const app = document.getElementById('app');
 const q = document.getElementById('q');
@@ -445,6 +473,337 @@ function saveProgress(t, dur, done) {
   else if (!done) l = getCW();
   setCW(l);
 }
+// --- TMDB-Key Linked Profile & P2P Serverless Watch Party + Low-Latency Chat ---
+const DEFAULT_AVATAR = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='32' fill='%232c3547'/><circle cx='32' cy='24' r='11' fill='%23ece9e2'/><path d='M14 54c3-11 33-11 36 0' fill='%23ece9e2'/></svg>";
+let party = { active: false, role: null, roomId: null, peer: null, conns: [], hostConn: null, lastTime: 0, lastState: 'paused', lastBroadcast: 0, messages: [], unread: 0, theaterChatOpen: false };
+
+function getProfileStorageKey() {
+  const k = (key || 'demo').trim();
+  let h = 0;
+  for (let i = 0; i < k.length; i++) h = ((h << 5) - h + k.charCodeAt(i)) | 0;
+  return 'sr_profile_' + Math.abs(h).toString(36);
+}
+
+function getUserProfile() {
+  try {
+    const raw = localStorage.getItem(getProfileStorageKey());
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (p && (p.name || p.pfp)) return { name: String(p.name || 'Viewer').slice(0, 24), pfp: String(p.pfp || DEFAULT_AVATAR) };
+    }
+  } catch (e) {}
+  return { name: 'Viewer #' + Math.floor(100 + Math.random() * 899), pfp: DEFAULT_AVATAR };
+}
+
+function saveUserProfile(name, pfp) {
+  const cur = getUserProfile();
+  const next = {
+    name: (name !== undefined ? String(name).trim() : cur.name).slice(0, 24) || cur.name,
+    pfp: (pfp !== undefined ? String(pfp).trim() : cur.pfp) || DEFAULT_AVATAR
+  };
+  try { localStorage.setItem(getProfileStorageKey(), JSON.stringify(next)); } catch (e) {}
+  return next;
+}
+
+async function syncProfileFromTmdbAccount() {
+  if (!key || key === '5d0979bf39cd11dbb4d24177b8b4b76c') return;
+  try {
+    const r = await fetch(`https://api.themoviedb.org/3/account?api_key=${encodeURIComponent(key)}`);
+    if (!r.ok) return;
+    const acc = await r.json();
+    const cur = getUserProfile();
+    const tmdbName = acc.name || acc.username;
+    const tmdbAvatar = acc.avatar?.tmdb?.avatar_path
+      ? `${IMG}w185${acc.avatar.tmdb.avatar_path}`
+      : (acc.avatar?.gravatar?.hash ? `https://www.gravatar.com/avatar/${acc.avatar.gravatar.hash}?s=128&d=mp` : null);
+    if (tmdbName || tmdbAvatar) {
+      saveUserProfile(cur.name.startsWith('Viewer #') && tmdbName ? tmdbName : cur.name, cur.pfp === DEFAULT_AVATAR && tmdbAvatar ? tmdbAvatar : cur.pfp);
+      updatePartyUI();
+    }
+  } catch (e) {}
+}
+
+function appendChatMessage(msg, isMe = false) {
+  party.messages.push({ ...msg, isMe });
+  if (party.messages.length > 100) party.messages.shift();
+  if (document.body.classList.contains('theater') && !party.theaterChatOpen && !isMe) {
+    party.unread++;
+    updateTheaterChatBtn();
+  }
+  renderChatMessages();
+}
+
+function updateTheaterChatBtn() {
+  const btn = document.getElementById('tchat-btn');
+  if (!btn) return;
+  if (!party.active) { btn.style.display = 'none'; return; }
+  btn.style.display = '';
+  btn.textContent = party.theaterChatOpen ? '✕ Close Chat' : `💬 Chat${party.unread > 0 ? ` (${party.unread})` : ''}`;
+}
+
+function renderChatMessages() {
+  const box = document.getElementById('chat-msgs');
+  if (!box) return;
+  if (!party.messages.length) {
+    box.innerHTML = `<div class="cmsg-sys">Say hi! Messages sync in real time with everyone in the party.</div>`;
+    return;
+  }
+  box.innerHTML = party.messages.map(m => {
+    if (m.sys) return `<div class="cmsg-sys">${esc(m.text)}</div>`;
+    const ts = new Date(m.ts || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return `<div class="cmsg${m.isMe ? ' me' : ''}">
+      <img src="${esc(m.pfp || DEFAULT_AVATAR)}" onerror="this.src='${DEFAULT_AVATAR}'" alt="">
+      <div class="cmsg-body">
+        <div class="cmsg-meta"><b>${esc(m.name || 'Viewer')}</b><span>${ts}</span></div>
+        <div>${esc(m.text)}</div>
+      </div>
+    </div>`;
+  }).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+function sendPartyChat(text) {
+  const clean = String(text || '').trim().slice(0, 400);
+  if (!clean || !party.active) return;
+  const prof = getUserProfile();
+  const packet = { type: 'chat', id: Math.random().toString(36).slice(2), name: prof.name, pfp: prof.pfp, text: clean, ts: Date.now() };
+  appendChatMessage(packet, true);
+  if (party.role === 'host') {
+    party.conns.forEach(c => { if (c.open) try { c.send(packet); } catch (e) {} });
+  } else if (party.hostConn && party.hostConn.open) {
+    try { party.hostConn.send(packet); } catch (e) {}
+  }
+}
+
+function getPartyUrl() {
+  if (!current || !party.roomId) return location.href;
+  const base = location.origin + location.pathname;
+  const epPart = current.type === 'tv' ? `/${current.s}/${current.e}` : '';
+  return `${base}#${current.type}/${current.id}${epPart}?party=${encodeURIComponent(party.roomId)}&prov=${encodeURIComponent(playerProv)}`;
+}
+
+function bindProfileControls() {
+  const nameIn = document.getElementById('prof-name');
+  const pfpBtn = document.getElementById('prof-pfp-btn');
+  const pfpImg = document.getElementById('prof-pfp-img');
+  if (nameIn) nameIn.onchange = () => saveUserProfile(nameIn.value);
+  if (pfpBtn) pfpBtn.onclick = () => {
+    const cur = getUserProfile();
+    const url = prompt('Paste avatar image URL (saved with your TMDB key):', cur.pfp === DEFAULT_AVATAR ? '' : cur.pfp);
+    if (url !== null) {
+      const updated = saveUserProfile(undefined, url || DEFAULT_AVATAR);
+      if (pfpImg) pfpImg.src = updated.pfp;
+    }
+  };
+}
+
+function updatePartyUI() {
+  const bar = document.getElementById('party-bar');
+  const chatBox = document.getElementById('party-chat');
+  if (!bar) return;
+  const prof = getUserProfile();
+  const profileHtml = `<div class="party-profile" title="Profile saved with your TMDB key">
+    <img id="prof-pfp-img" src="${esc(prof.pfp)}" onerror="this.src='${DEFAULT_AVATAR}'" alt="Avatar">
+    <input id="prof-name" value="${esc(prof.name)}" maxlength="24" placeholder="Username" aria-label="Chat username">
+    <button id="prof-pfp-btn" type="button" style="padding:5px 8px;font-size:12px" title="Change profile picture">🖼 PFP</button>
+  </div>`;
+
+  if (!party.active) {
+    bar.classList.remove('active');
+    bar.innerHTML = `<button id="startparty" class="party-btn">🎉 Watch with Friends (Create Discord Link)</button><span class="meta" style="margin:0;font-size:13px">P2P sync + live chat</span>${profileHtml}`;
+    bindProfileControls();
+    if (chatBox) { chatBox.style.display = 'none'; chatBox.classList.remove('t-open'); }
+    updateTheaterChatBtn();
+    const sp = document.getElementById('startparty');
+    if (sp) sp.onclick = () => startWatchParty();
+    return;
+  }
+  bar.classList.add('active');
+  if (party.role === 'host') {
+    const count = party.conns.filter(c => c.open).length;
+    bar.innerHTML = `<span class="party-badge">HOSTING PARTY</span>
+      <span class="party-peers">${count} friend${count === 1 ? '' : 's'} connected</span>
+      <button id="copyparty" class="party-btn">📋 Copy Discord Link</button>
+      <button id="syncnow" title="Force all friends to jump to your exact timestamp & episode">⚡ Force Sync</button>
+      <button id="leaveparty">End Party</button>${profileHtml}`;
+    bindProfileControls();
+    document.getElementById('copyparty').onclick = async ev => {
+      try {
+        await navigator.clipboard.writeText(getPartyUrl());
+        ev.target.textContent = '✅ Copied!';
+        setTimeout(() => { if (ev.target) ev.target.textContent = '📋 Copy Discord Link'; }, 2500);
+      } catch (e) { prompt('Copy this invite link for Discord:', getPartyUrl()); }
+    };
+    document.getElementById('syncnow').onclick = ev => {
+      broadcastPartyState(true);
+      ev.target.textContent = '⚡ Synced!';
+      setTimeout(() => { if (ev.target) ev.target.textContent = '⚡ Force Sync'; }, 1500);
+    };
+    document.getElementById('leaveparty').onclick = leaveWatchParty;
+  } else {
+    const connected = party.hostConn && party.hostConn.open;
+    bar.innerHTML = `<span class="party-badge">WATCH PARTY GUEST</span>
+      <span class="party-peers">${connected ? '🟢 Synced with host' : '🟡 Connecting to host…'}</span>
+      <button id="reqsync">🔄 Resync</button>
+      <button id="leaveparty">Leave Party</button>${profileHtml}`;
+    bindProfileControls();
+    document.getElementById('reqsync').onclick = () => {
+      if (party.hostConn && party.hostConn.open) party.hostConn.send({ type: 'req_sync' });
+    };
+    document.getElementById('leaveparty').onclick = leaveWatchParty;
+  }
+
+  if (chatBox) {
+    chatBox.style.display = 'flex';
+    chatBox.classList.toggle('t-open', !!party.theaterChatOpen);
+    if (!chatBox.dataset.bound) {
+      chatBox.dataset.bound = '1';
+      chatBox.innerHTML = `<div class="chat-head"><span>💬 Party Live Chat (Low-Latency P2P)</span><span style="font-weight:400;color:var(--muted);font-size:12px">Available in Theater & Normal view</span></div>
+        <div id="chat-msgs" class="chat-msgs"></div>
+        <form id="chat-form" class="chat-form" autocomplete="off">
+          <input id="chat-input" type="text" maxlength="400" placeholder="Message the party…">
+          <button type="submit">Send</button>
+        </form>`;
+      document.getElementById('chat-form').onsubmit = ev => {
+        ev.preventDefault();
+        const inp = document.getElementById('chat-input');
+        if (inp && inp.value.trim()) {
+          sendPartyChat(inp.value);
+          inp.value = '';
+        }
+      };
+    }
+    renderChatMessages();
+  }
+  updateTheaterChatBtn();
+}
+
+function broadcastPartyState(force = false) {
+  if (!party.active || party.role !== 'host' || !current) return;
+  const now = Date.now();
+  if (!force && now - party.lastBroadcast < 1200) return;
+  party.lastBroadcast = now;
+  const payload = {
+    type: 'sync',
+    force,
+    mediaType: current.type,
+    id: current.id,
+    s: current.s || 1,
+    e: current.e || 1,
+    prov: playerProv,
+    time: party.lastTime || 0,
+    state: party.lastState || 'playing',
+    sentAt: now
+  };
+  party.conns.forEach(c => { if (c.open) try { c.send(payload); } catch (err) {} });
+}
+
+function startWatchParty() {
+  if (typeof Peer === 'undefined') { alert('PeerJS failed to load. Check your internet connection.'); return; }
+  leaveWatchParty();
+  const roomId = 'sr-' + Math.random().toString(36).slice(2, 8) + '-' + Date.now().toString(36).slice(-4);
+  party = { active: true, role: 'host', roomId, peer: null, conns: [], hostConn: null, lastTime: 0, lastState: 'playing', lastBroadcast: 0 };
+  updatePartyUI();
+  const peer = new Peer(roomId, { debug: 0 });
+  party.peer = peer;
+  peer.on('open', () => {
+    updatePartyUI();
+    navigator.clipboard.writeText(getPartyUrl()).catch(() => {});
+  });
+  peer.on('connection', conn => {
+    party.conns.push(conn);
+    conn.on('open', () => {
+      updatePartyUI();
+      broadcastPartyState(true);
+      appendChatMessage({ sys: true, text: 'A friend joined the party!' }, true);
+    });
+    conn.on('data', msg => {
+      if (!msg) return;
+      if (msg.type === 'req_sync') broadcastPartyState(true);
+      else if (msg.type === 'chat') {
+        appendChatMessage(msg, false);
+        party.conns.forEach(other => { if (other !== conn && other.open) try { other.send(msg); } catch (e) {} });
+      }
+    });
+    conn.on('close', () => {
+      party.conns = party.conns.filter(c => c !== conn);
+      updatePartyUI();
+      appendChatMessage({ sys: true, text: 'A friend left the party.' }, true);
+    });
+  });
+  peer.on('error', () => {
+    const bar = document.getElementById('party-bar');
+    if (bar) bar.innerHTML += `<span style="color:#ff8a8a;font-size:12px">Connection hiccup — retrying…</span>`;
+  });
+}
+
+function joinWatchParty(roomId) {
+  if (typeof Peer === 'undefined') return;
+  leaveWatchParty();
+  party = { active: true, role: 'guest', roomId, peer: null, conns: [], hostConn: null, lastTime: 0, lastState: 'playing', lastBroadcast: 0 };
+  updatePartyUI();
+  const peer = new Peer({ debug: 0 });
+  party.peer = peer;
+  peer.on('open', () => {
+    const conn = peer.connect(roomId, { reliable: true });
+    party.hostConn = conn;
+    conn.on('open', () => {
+      updatePartyUI();
+      conn.send({ type: 'req_sync' });
+      const prof = getUserProfile();
+      appendChatMessage({ sys: true, text: `Connected to party chat as ${prof.name}` }, true);
+    });
+    conn.on('data', msg => {
+      if (!msg) return;
+      if (msg.type === 'sync') applyHostSync(msg);
+      else if (msg.type === 'chat') appendChatMessage(msg, false);
+    });
+    conn.on('close', () => updatePartyUI());
+  });
+}
+
+function applyHostSync(msg) {
+  if (!current) return;
+  const rttSec = Math.max(0, (Date.now() - (msg.sentAt || Date.now())) / 1000);
+  const targetTime = Math.floor((msg.time || 0) + (msg.state === 'playing' ? rttSec : 0));
+
+  // Switch title if host navigated
+  if (String(current.id) !== String(msg.id) || current.type !== msg.mediaType) {
+    watch(msg.mediaType, msg.id, { s: msg.s, e: msg.e, t: targetTime }, true);
+    return;
+  }
+  // Switch provider if needed
+  if (msg.prov && playerProv !== msg.prov) {
+    playerProv = msg.prov;
+    const ps = document.getElementById('provsel');
+    if (ps) ps.value = playerProv;
+  }
+  // Switch episode if host changed season/episode
+  if (current.type === 'tv' && (current.s !== msg.s || current.e !== msg.e)) {
+    current.s = msg.s;
+    current.e = msg.e;
+    const en = document.getElementById('epnow');
+    if (en) en.textContent = `Now playing: S${msg.s} E${msg.e}`;
+    const f = document.getElementById('frame');
+    if (f) f.src = getEmbedUrl(playerProv, current.type, current.id, msg.s, msg.e, targetTime);
+    if (epRedraw) epRedraw();
+    return;
+  }
+  // Drift correction (> 4s drift or forced sync)
+  const drift = Math.abs((party.lastTime || 0) - targetTime);
+  if (msg.force || drift > 4) {
+    party.lastTime = targetTime;
+    const f = document.getElementById('frame');
+    if (f) f.src = getEmbedUrl(playerProv, current.type, current.id, current.s, current.e, targetTime);
+  }
+}
+
+function leaveWatchParty() {
+  if (party.peer) { try { party.peer.destroy(); } catch (e) {} }
+  party = { active: false, role: null, roomId: null, peer: null, conns: [], hostConn: null, lastTime: 0, lastState: 'paused', lastBroadcast: 0, messages: [], unread: 0, theaterChatOpen: false };
+  updatePartyUI();
+}
+
 window.addEventListener('message', ev => {
   const f = document.getElementById('frame');
   if (!f || ev.source !== f.contentWindow) return;
@@ -452,12 +811,24 @@ window.addEventListener('message', ev => {
   if (typeof p === 'string') { try { p = JSON.parse(p); } catch (e) { return; } }
   if (!p || !p.event) return;
   const now = Date.now();
-  if (p.event === 'ended') {
+  if (typeof p.currentTime === 'number') party.lastTime = p.currentTime;
+  if (p.event === 'play') {
+    party.lastState = 'playing';
+    if (party.active && party.role === 'host') broadcastPartyState(true);
+  } else if (p.event === 'pause') {
+    party.lastState = 'paused';
+    lastSave = now; saveProgress(p.currentTime || 0, p.duration || 0, false);
+    if (party.active && party.role === 'host') broadcastPartyState(true);
+  } else if (p.event === 'ended') {
+    party.lastState = 'paused';
     if (current && current.type === 'tv') { setW(current.id, current.s, current.e, true); if (epRedraw) epRedraw(); }
     saveProgress(0, 0, true); nextUp();
-  }
-  else if (p.event === 'pause' || (p.event === 'timeupdate' && now - lastSave > 5000)) {
-    lastSave = now; saveProgress(p.currentTime || 0, p.duration || 0, false);
+  } else if (p.event === 'timeupdate') {
+    party.lastState = 'playing';
+    if (now - lastSave > 5000) {
+      lastSave = now; saveProgress(p.currentTime || 0, p.duration || 0, false);
+    }
+    if (party.active && party.role === 'host') broadcastPartyState(false);
   }
 });
 
@@ -501,6 +872,7 @@ function showSetup(err) {
   document.getElementById('save').onclick = () => {
     key = document.getElementById('k').value.trim();
     try { localStorage.setItem('tmdb_key', key); } catch (e) {}
+    syncProfileFromTmdbAccount();
     home();
   };
   const demo = document.getElementById('demobtn');
@@ -818,7 +1190,7 @@ function bindBackup() {
   const uc = document.getElementById('upchk'); if (uc) uc.onclick = () => checkUpdate(true);
   const say = t => { const m = document.getElementById('bkmsg'); if (m) m.textContent = t; };
   if (exp) exp.onclick = () => {
-    const data = { app: 'screenroom', v: 1, key, fav: lsGet('fav'), hist: lsGet('hist'), cw: getCW(), watched: getW() };
+    const data = { app: 'screenroom', v: 1, key, profile: getUserProfile(), fav: lsGet('fav'), hist: lsGet('hist'), cw: getCW(), watched: getW() };
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
     a.download = 'screenroom-backup.json';
@@ -846,6 +1218,7 @@ function bindBackup() {
           try { localStorage.setItem('watched', JSON.stringify(w)); } catch (e2) {}
         }
         if (d.key && !key) { key = String(d.key); try { localStorage.setItem('tmdb_key', key); } catch (e) {} }
+        if (d.profile && typeof d.profile === 'object') saveUserProfile(d.profile.name, d.profile.pfp);
         if (tab === 'list') listView(); else if (key) home();
         say('Backup imported.');
       } catch (e) { say('That file is not a Screenroom backup.'); }
@@ -1006,7 +1379,9 @@ async function watch(type, id, res = {}, fromBack = false) {
     const amb = document.getElementById('amb');
     if (d.backdrop_path) { amb.style.backgroundImage = `url(${IMG}w300${d.backdrop_path})`; amb.classList.add('on'); } else amb.classList.remove('on');
     document.body.classList.toggle('tv', type === 'tv');
-    history.replaceState(null, '', location.pathname + location.search + '#' + type + '/' + id);
+    const epHash = type === 'tv' ? `/${s}/${e}` : '';
+    const partyHash = (party.active && party.roomId) ? `?party=${encodeURIComponent(party.roomId)}&prov=${encodeURIComponent(playerProv)}` : '';
+    history.replaceState(null, '', location.pathname + location.search + '#' + type + '/' + id + epHash + partyHash);
     updateBackVisibility();
     
     let cert = '';
@@ -1043,6 +1418,7 @@ async function watch(type, id, res = {}, fromBack = false) {
     const rtLink = `https://www.google.com/search?q=${rtQuery}`;
 
     app.innerHTML = `<div class="watch">
+      <div id="party-bar" class="party-bar"></div>
       <div class="player-bar">
         <label class="meta" style="margin:0">Source:</label>
         <select id="provsel">
@@ -1056,6 +1432,7 @@ async function watch(type, id, res = {}, fromBack = false) {
       <div class="player"><iframe id="frame" allowfullscreen
         allow="encrypted-media; autoplay *; fullscreen *"
         src="${getEmbedUrl(playerProv, type, id, s, e, t)}"></iframe></div>
+      <div id="party-chat" class="party-chat" style="display:none"></div>
       <div class="icol">
         <div id="next"></div>
         <h2 dir="auto">${esc(name)}</h2>
@@ -1089,10 +1466,12 @@ async function watch(type, id, res = {}, fromBack = false) {
       if (dl) dl.onclick = () => loadPersonCredits(directorId);
     }
 
+    updatePartyUI();
     document.getElementById('provsel').onchange = ev => {
       playerProv = ev.target.value;
       try { localStorage.setItem('player_prov', playerProv); } catch (e) {}
       document.getElementById('frame').src = getEmbedUrl(playerProv, current.type, current.id, current.s, current.e, 0);
+      if (party.active && party.role === 'host') broadcastPartyState(true);
     };
 
     document.getElementById('copylink').onclick = async ev => {
@@ -1231,6 +1610,10 @@ function enterTheater() {
 }
 function exitTheater() {
   document.body.classList.remove('theater', 'thide');
+  party.theaterChatOpen = false;
+  const cb = document.getElementById('party-chat');
+  if (cb) cb.classList.remove('t-open');
+  updateTheaterChatBtn();
   clearTimeout(tTimer);
 }
 
@@ -1364,9 +1747,13 @@ function playEpisode(s, e) {
   clearInterval(nextTimer);
   const nx = document.getElementById('next'); if (nx) nx.innerHTML = '';
   current.s = s; current.e = e;
+  party.lastTime = 0;
+  const partyHash = (party.active && party.roomId) ? `?party=${encodeURIComponent(party.roomId)}&prov=${encodeURIComponent(playerProv)}` : '';
+  history.replaceState(null, '', location.pathname + location.search + `#tv/${current.id}/${s}/${e}${partyHash}`);
   const en = document.getElementById('epnow'); if (en) en.textContent = `Now playing: S${s} E${e}`;
   document.getElementById('frame').src = getEmbedUrl(playerProv, current.type, current.id, s, e, 0);
   if (epRedraw) epRedraw();
+  if (party.active && party.role === 'host') broadcastPartyState(true);
 }
 
 async function nextUp() {
@@ -1397,6 +1784,8 @@ function showNext(s, e) {
 }
 
 const PATCHNOTES = [
+  { v: '29', c: ['Added serverless P2P Watch Party rooms (WebRTC) with one-click Discord invite links that sync episodes and timestamps, plus a low-latency live party chat (available in both normal and Theater mode) with custom username & profile picture saved per TMDB key.'] },
+  { v: '28', c: ['Retained all v27 features, multi-source audio/subtitle streaming options (Vidy.st, Multiembed, Vidsrc), Demo Mode, Admin Panel, and quote splashes in a clean release build.'] },
   { v: '27', c: ['Fixed iPhone portrait header layout & bottom navigation spacing, added multi-step top-left Back button history, and fixed Theater Mode controls reappearing on iOS touch screens.'] },
   { v: '26', c: ['Implemented Tier 2 Features: Recent Search Dropdown with history, Clickable Genre Chips Everywhere, Keyboard Hotkey Map (? key), Quick Scroll-to-Top Floating Button, One-Tap Shareable Deep Links, IMDb & Rotten Tomatoes Quick-Links, Episode Air-Date Countdowns ("Airing in X days"), Director & Creator Links for full filmographies, Content Advisory Ratings (PG-13, TV-MA, etc.), and Box Office & Financial Stats earnings!'] },
   { v: '25', c: ['Tier 1 Features: Favicon badges, glassmorphism header, confetti, ambient glow slider, card glow, corner roundness, custom branding, skeleton loader, sound FX, quote splash.'] }
@@ -1486,6 +1875,19 @@ document.getElementById('texit').onclick = () => {
   if (history.state && history.state.theater) history.back(); else exitTheater();
 };
 document.getElementById('tnext').onclick = () => { showTheaterUI(); nextEpisodeNow(); };
+document.getElementById('tchat-btn').onclick = () => {
+  showTheaterUI();
+  party.theaterChatOpen = !party.theaterChatOpen;
+  if (party.theaterChatOpen) party.unread = 0;
+  const cb = document.getElementById('party-chat');
+  if (cb) cb.classList.toggle('t-open', party.theaterChatOpen);
+  updateTheaterChatBtn();
+  if (party.theaterChatOpen) {
+    renderChatMessages();
+    const inp = document.getElementById('chat-input');
+    if (inp) inp.focus();
+  }
+};
 window.addEventListener('popstate', () => { if (document.body.classList.contains('theater')) exitTheater(); });
 
 backBtn.onclick = () => {
@@ -1517,8 +1919,25 @@ let seenV = '';
 try { seenV = localStorage.getItem('seen') || ''; } catch (e) {}
 if (seenV !== APP_VERSION) { if (key) showPatchNotes(); else { try { localStorage.setItem('seen', APP_VERSION); } catch (e) {} } }
 checkUpdate(false);
-const hm = location.hash.match(/^#(movie|tv)\/(\d+)$/);
-loadBlocked().then(() => { if (hm && key) watch(hm[1], hm[2]); else home(); });
+const hm = location.hash.match(/^#(movie|tv)\/(\d+)(?:\/(\d+)\/(\d+))?(?:\?(.*))?$/);
+if (key) syncProfileFromTmdbAccount();
+loadBlocked().then(() => {
+  if (hm) {
+    const [, mType, mId, mS, mE, mQuery] = hm;
+    const qp = new URLSearchParams(mQuery || '');
+    const partyRoom = qp.get('party');
+    const provParam = qp.get('prov');
+    if (provParam && ['vidyst', 'multiembed', 'vidsrc'].includes(provParam)) playerProv = provParam;
+    if (!key && partyRoom) key = '5d0979bf39cd11dbb4d24177b8b4b76c';
+    if (key) {
+      watch(mType, mId, { s: +(mS || 1), e: +(mE || 1), t: 0 }).then(() => {
+        if (partyRoom) joinWatchParty(partyRoom);
+      });
+      return;
+    }
+  }
+  home();
+});
 </script>
 </body>
 </html>
