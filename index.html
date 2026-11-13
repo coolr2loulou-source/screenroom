@@ -152,7 +152,7 @@ body.theater nav{display:none}
 
 .badge-tag{background:rgba(255,122,69,0.15);color:var(--accent);border:1px solid var(--accent);border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700;display:inline-block;margin-right:8px}
 
-.stats-box{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:20px}
+.stats-box{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:20px}
 .stat-item{text-align:center}
 .stat-num{font-size:22px;font-weight:700;color:var(--accent)}
 .stat-lbl{font-size:11px;color:var(--muted)}
@@ -219,6 +219,10 @@ body.theater nav{display:none}
 #lightbox img{max-width:100%;max-height:100%;border-radius:10px}
 .pfbar{display:flex;gap:8px;margin:0 0 14px}.pfbar button.on{background:var(--accent);color:#141922;border-color:var(--accent);font-weight:700}
 .studios{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.studios img{height:26px;max-width:92px;object-fit:contain;background:#fff;border-radius:6px;padding:3px 7px}
+#fx{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:5}#fx span{position:absolute;top:-40px;opacity:.3;color:var(--accent);animation:fxfall linear infinite}
+@keyframes fxfall{to{transform:translateY(115vh) rotate(360deg)}}
+body.theater #fx{display:none}
+.qf{position:absolute;top:6px;right:6px;width:30px;height:30px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#fff;font-size:16px;padding:0;z-index:2;cursor:pointer}.qf.on{color:var(--accent)}
 .party-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:12px}
 .party-bar.active{border-color:var(--accent);box-shadow:0 0 12px rgba(255,122,69,0.2)}
 .party-badge{background:var(--accent);color:#141922;font-weight:700;font-size:12px;padding:2px 8px;border-radius:999px}
@@ -286,7 +290,7 @@ body.theater #next{position:fixed;left:50%;transform:translateX(-50%);bottom:cal
 <p class="attr">This product uses the TMDB API but is not endorsed or certified by TMDB. <span id="contact"></span></p>
 
 <script>
-const APP_VERSION = '38';
+const APP_VERSION = '45';
 const IMG = 'https://image.tmdb.org/t/p/';
 const app = document.getElementById('app');
 const q = document.getElementById('q');
@@ -300,6 +304,176 @@ const isDone = (type, id) => lsGet('done').includes(type + '/' + id);
 let personFilter = 'all';
 const getNS = () => { const v = localStorage.getItem('nextsecs'); return v === null || isNaN(+v) ? 8 : +v; };
 const nsecsHtml = () => '<select id="nsecs" aria-label="Autoplay next episode">' + [[0, 'Autoplay off'], [5, 'Next in 5s'], [8, 'Next in 8s'], [10, 'Next in 10s'], [15, 'Next in 15s']].map(([v, l]) => `<option value="${v}"${getNS() === v ? ' selected' : ''}>${l}</option>`).join('') + '</select>';
+const THEMES = {
+  default: null,
+  amoled: { bg: '#000000', surface: '#0d0d0d', line: '#262626', text: '#f2f2f2', muted: '#8a8a8a', accent: '#ff7a45' },
+  midnight: { bg: '#0b1220', surface: '#131c31', line: '#223052', text: '#e6ecf8', muted: '#8392b3', accent: '#4da3ff' },
+  dracula: { bg: '#282a36', surface: '#343746', line: '#44475a', text: '#f8f8f2', muted: '#9aa0c0', accent: '#bd93f9' },
+  nord: { bg: '#2e3440', surface: '#3b4252', line: '#4c566a', text: '#eceff4', muted: '#9aa5b8', accent: '#88c0d0' },
+  forest: { bg: '#0f1a14', surface: '#18271f', line: '#264034', text: '#e4efe8', muted: '#8aa597', accent: '#2ecc71' },
+  sunset: { bg: '#1f1416', surface: '#2c1c20', line: '#4a2a31', text: '#f6e9e4', muted: '#b99a98', accent: '#ff6b6b' },
+  rose: { bg: '#1c1420', surface: '#291c2e', line: '#43294a', text: '#f5e8f7', muted: '#b497b9', accent: '#f06ac8' },
+  coffee: { bg: '#1a1512', surface: '#261e19', line: '#40332a', text: '#efe6dc', muted: '#a8978a', accent: '#d9a066' },
+  miku: { bg: '#061a1c', surface: '#0e2b2e', line: '#1a4a4f', text: '#e4fffd', muted: '#82c4bf', accent: '#39c5bb', fx: '♪' },
+  teto: { bg: '#1c0e12', surface: '#2b1519', line: '#4f232c', text: '#ffeaee', muted: '#c79aa3', accent: '#e0344f', fx: '🥖' },
+  rei: { bg: '#0a0e16', surface: '#121927', line: '#22304a', text: '#eaf3ff', muted: '#8aa2c6', accent: '#ff4f4f', fx: '✦' },
+  synthwave: { bg: '#140a24', surface: '#201238', line: '#3a2260', text: '#f6e9ff', muted: '#a68dc9', accent: '#ff3cac', fx: '✦' },
+  cyber: { bg: '#0a0d12', surface: '#121820', line: '#233040', text: '#eafcff', muted: '#7fa3b0', accent: '#fcee0a' },
+  matrix: { bg: '#020a04', surface: '#07150b', line: '#12361c', text: '#c9ffd6', muted: '#5fa874', accent: '#00ff66' },
+  gold: { bg: '#14120b', surface: '#1f1c11', line: '#3a3520', text: '#f3eedb', muted: '#a39c80', accent: '#f5c542' }
+};
+function applyFx(t) {
+  const old = document.getElementById('fx'); if (old) old.remove();
+  if (!t || !t.fx || localStorage.getItem('fx') === '0' || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const d = document.createElement('div'); d.id = 'fx'; d.setAttribute('aria-hidden', 'true');
+  for (let i = 0; i < 14; i++) {
+    const e = document.createElement('span'); e.textContent = t.fx;
+    e.style.cssText = `left:${Math.random() * 100}%;font-size:${14 + Math.random() * 14}px;animation-duration:${9 + Math.random() * 10}s;animation-delay:-${Math.random() * 15}s`;
+    d.appendChild(e);
+  }
+  document.body.appendChild(d);
+}
+function applyPreset(name) {
+  const st = document.documentElement.style, keys = ['bg', 'surface', 'line', 'text', 'muted', 'accent'];
+  keys.forEach(k => st.removeProperty('--' + k));
+  const t = THEMES[name];
+  if (t) { document.body.classList.remove('light'); keys.forEach(k => st.setProperty('--' + k, t[k])); }
+  else {
+    const a = localStorage.getItem('accent'); if (a) st.setProperty('--accent', a);
+    if (localStorage.getItem('theme') === 'light') document.body.classList.add('light');
+  }
+  applyCustomTheme();
+  applyFx(t);
+  const m = document.querySelector('meta[name="theme-color"]');
+  if (m) m.content = (t && t.bg) || (document.body.classList.contains('light') ? '#f4f6f9' : '#141922');
+}
+const getMR = () => { try { const o = JSON.parse(localStorage.getItem('myrate') || '{}'); return o && typeof o === 'object' && !Array.isArray(o) ? o : {}; } catch (e) { return {}; } };
+function secretTheme() {
+  triggerConfetti();
+  const ks = Object.keys(THEMES).filter(k => k !== 'default'), k = ks[Math.floor(Math.random() * ks.length)];
+  try { localStorage.setItem('preset', k); localStorage.setItem('theme', 'dark'); } catch (e) {}
+  applyPreset(k);
+}
+(() => {
+  const seq = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a']; let i = 0;
+  window.addEventListener('keydown', ev => { i = (ev.key === seq[i] || ev.key.toLowerCase() === seq[i]) ? i + 1 : 0; if (i === seq.length) { i = 0; secretTheme(); } });
+  let taps = [];
+  document.addEventListener('click', ev => {
+    if (!ev.target.closest || !ev.target.closest('.logo')) return;
+    const n = Date.now(); taps = taps.filter(t => n - t < 4000); taps.push(n);
+    if (taps.length >= 7) { taps = []; secretTheme(); }
+  });
+})();
+function showWrapped() {
+  const w = getWT(), h = v => ((v || 0) / 3600).toFixed(1), fav = lsGet('fav'), mr = getMR();
+  let days = 0; try { days = JSON.parse(localStorage.getItem('wdays') || '[]').length; } catch (e) {}
+  const top = fav.filter(x => (mr[x.type + '/' + x.id] || 0) >= 4).sort((a, b) => mr[b.type + '/' + b.id] - mr[a.type + '/' + a.id]).slice(0, 5);
+  const row = (n, l) => `<div style="display:flex;justify-content:space-between;align-items:baseline;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.12)"><span>${l}</span><b style="font-size:22px">${n}</b></div>`;
+  const o = document.createElement('div'); o.id = 'sbox';
+  o.style.cssText = 'position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.88);overflow:auto;padding:max(18px,env(safe-area-inset-top)) 14px 28px';
+  o.innerHTML = `<div style="max-width:420px;margin:0 auto;border-radius:20px;padding:22px;color:#fff;background:linear-gradient(155deg,var(--accent),var(--surface) 68%);border:1px solid var(--line)">
+    <h2 style="margin:0 0 4px;font-family:Georgia,serif">🎁 Your Screenroom</h2><p style="margin:0 0 12px;opacity:.85">Everything you watched here</p>
+    ${row(h(w.movie) + 'h', '🎬 Movies watched')}${row(h(w.tv) + 'h', '📺 Series watched')}${row(days, '📅 Days you watched')}${row(fav.length, '♥ Titles in your list')}${row(lsGet('done').length, '✅ Completed')}
+    ${top.length ? `<p style="margin:14px 0 6px;font-weight:700">Your top picks</p>${top.map(x => `<div>${'★'.repeat(mr[x.type + '/' + x.id])} ${esc(x.name)}</div>`).join('')}` : '<p style="margin:14px 0 0;opacity:.85">Rate titles with ★ to see your top picks here.</p>'}
+    <button id="wrapx" style="margin-top:16px;width:100%">Close</button></div>`;
+  document.body.appendChild(o);
+  o.onclick = ev => { if (ev.target === o || ev.target.id === 'wrapx') o.remove(); };
+}
+const getCT = () => { try { const o = JSON.parse(localStorage.getItem('custom_theme') || '{}'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } };
+function applyCustomTheme() {
+  const c = getCT(), st = document.documentElement.style;
+  if (c.accent) st.setProperty('--accent', c.accent);
+  ['bg', 'surface'].forEach(k => { if (c[k]) st.setProperty('--' + k, c[k]); });
+}
+function showSandbox() {
+  const o = document.createElement('div'); o.id = 'sbox';
+  o.style.cssText = 'position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.9);overflow:auto;padding:max(14px,env(safe-area-inset-top)) 12px 24px';
+  o.innerHTML = '<div style="width:min(900px,100%);margin:0 auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px"><h3 style="margin:0 0 6px">Embed sandbox</h3><p class="meta">Use {type} {id} {s} {e} in the URL (https only).</p><input id="sbu" style="width:100%;box-sizing:border-box" autocapitalize="off" autocorrect="off" spellcheck="false"><div style="display:flex;gap:8px;margin:10px 0"><button id="sbgo">Load</button><button id="sbx">Close</button></div><div class="player"><iframe id="sbf" allowfullscreen allow="encrypted-media; autoplay *; fullscreen *; picture-in-picture *"></iframe></div></div>';
+  document.body.appendChild(o);
+  const inp = document.getElementById('sbu');
+  inp.value = localStorage.getItem('sandbox_url') || 'https://vidy.st/{type}/{id}';
+  document.getElementById('sbx').onclick = () => o.remove();
+  document.getElementById('sbgo').onclick = () => {
+    const u = inp.value.trim().replace(/\{type\}/g, current.type).replace(/\{id\}/g, current.id).replace(/\{s\}/g, current.s || 1).replace(/\{e\}/g, current.e || 1);
+    if (!/^https:\/\//i.test(u)) { inp.focus(); return; }
+    try { localStorage.setItem('sandbox_url', inp.value.trim()); } catch (e) {}
+    document.getElementById('sbf').src = u;
+  };
+}
+const getPosters = () => { try { const o = JSON.parse(localStorage.getItem('posters') || '{}'); return o && typeof o === 'object' && !Array.isArray(o) ? o : {}; } catch (e) { return {}; } };
+function applyPosterOverrides() {
+  const m = getPosters();
+  if (!Object.keys(m).length) return;
+  app.querySelectorAll('.card[data-type][data-id]').forEach(c => {
+    const u = m[c.dataset.type + '/' + c.dataset.id], img = c.querySelector('img');
+    if (u && img && img.src !== u) img.src = u;
+  });
+}
+let pendingImport = null;
+const buildBackup = () => ({ app: 'screenroom', v: 1, key, profile: getUserProfile(), fav: lsGet('fav'), hist: lsGet('hist'), cw: getCW(), watched: getW(), lists: getLists(), posters: getPosters(), done: lsGet('done'), wtime: getWT(), myrate: getMR() });
+async function homeExtras() {
+  if (!key || tab !== 'all') return;
+  const hero0 = app.querySelector('.hero');
+  if (hero0 && !document.getElementById('moods')) {
+    const moods = [[35, '😂 Comedy'], [27, '😱 Horror'], [10749, '💘 Romance'], [878, '🚀 Sci-Fi'], [53, '🧠 Thriller'], [16, '🎨 Animation'], [28, '💥 Action']];
+    hero0.insertAdjacentHTML('afterend', `<div class="pfbar" id="moods" style="flex-wrap:wrap;margin-top:14px"><span class="meta" style="align-self:center">Tonight I feel like:</span>${moods.map(([g, l]) => `<button data-g="${g}">${l}</button>`).join('')}</div>`);
+    document.querySelectorAll('#moods button').forEach(b => b.onclick = async () => {
+      try {
+        const r = await api('/discover/movie', `&with_genres=${b.dataset.g}&sort_by=popularity.desc&vote_count.gte=300`);
+        render((r.results || []).filter(x => !isBlocked('movie', x.id)).map(x => ({ ...x, media_type: 'movie' })), b.textContent.trim() + ' night', false);
+      } catch (e) {}
+    });
+  }
+  const uniq = [];
+  [...getCW(), ...lsGet('hist'), ...lsGet('fav')].forEach(x => { if (x && x.type && x.id && !uniq.some(u => same(u, x.type, x.id))) uniq.push(x); });
+  // New episodes of favorite series (checked when the app is open)
+  try {
+    const favTv = lsGet('fav').filter(x => x.type === 'tv').slice(0, 12);
+    const seen = (() => { try { return JSON.parse(localStorage.getItem('newep') || '{}'); } catch (e) { return {}; } })();
+    const rs = await Promise.allSettled(favTv.map(x => api(`/tv/${x.id}`)));
+    const fresh = [], cur = { ...seen };
+    rs.forEach((r, i) => {
+      const l = r.status === 'fulfilled' && r.value.last_episode_to_air;
+      if (!l || !l.air_date) return;
+      const sig = `${l.air_date}-${l.season_number}-${l.episode_number}`, id = favTv[i].id;
+      if (!(id in seen)) cur[id] = sig;
+      else if (seen[id] !== sig) { fresh.push(`${favTv[i].name} S${l.season_number} E${l.episode_number}`); cur[id] = sig; }
+    });
+    if (!fresh.length) { try { localStorage.setItem('newep', JSON.stringify(cur)); } catch (e) {} }
+    else if (app.querySelector('.hero')) {
+      app.insertAdjacentHTML('afterbegin', `<div class="nextup" id="newepbar" style="margin:0 0 14px"><span>🆕 New episode${fresh.length > 1 ? 's' : ''}: ${esc(fresh.slice(0, 4).join(', '))}${fresh.length > 4 ? '…' : ''}</span><button id="newepok">OK</button></div>`);
+      document.getElementById('newepok').onclick = () => { try { localStorage.setItem('newep', JSON.stringify(cur)); } catch (e) {} document.getElementById('newepbar').remove(); };
+    }
+  } catch (e) {}
+  // "Picked for you": score recommendations by how often they come up and how well their genres match your history
+  try {
+    const base = uniq.slice(0, 10);
+    if (!base.length) return;
+    const dets = await Promise.allSettled(base.map(x => api(`/${x.type}/${x.id}`)));
+    const gw = {};
+    dets.forEach((d, i) => { if (d.status === 'fulfilled') (d.value.genres || []).forEach(g => { gw[g.id] = (gw[g.id] || 0) + (base.length - i); }); });
+    const recs = await Promise.allSettled(base.map(x => api(`/${x.type}/${x.id}/recommendations`)));
+    const sc = {};
+    recs.forEach((r, i) => {
+      if (r.status !== 'fulfilled') return;
+      (r.value.results || []).forEach(m => {
+        const t = m.media_type || base[i].type, k = t + '/' + m.id;
+        if (!m.poster_path || isBlocked(t, m.id) || uniq.some(u => same(u, t, m.id)) || isDone(t, m.id)) return;
+        const o = sc[k] || (sc[k] = { m, t, score: 0 });
+        o.score += 3 + (base.length - i) * 0.2 + (m.genre_ids || []).reduce((a, g) => a + (gw[g] || 0) * 0.15, 0) + (m.vote_average || 0) * 0.1;
+      });
+    });
+    const top = Object.values(sc).sort((a, b) => b.score - a.score).slice(0, 20);
+    const hero = app.querySelector('.hero');
+    if (top.length < 4 || !hero) return;
+    const cards = top.map(({ m, t }) => `<div class="card" tabindex="0" data-type="${t}" data-id="${m.id}">${m.vote_average > 0 ? `<b class="rt">★ ${m.vote_average.toFixed(1)}</b>` : ''}<img loading="lazy" decoding="async" src="${IMG}w342${m.poster_path}" alt="${esc(m.title || m.name)}"><div>${esc(m.title || m.name)}<small>${t === 'tv' ? 'Series' : 'Movie'} · ${(m.release_date || m.first_air_date || '').slice(0, 4)}</small></div></div>`).join('');
+    hero.insertAdjacentHTML('afterend', `<section class="row" id="picked"><div class="hd"><h2 class="sec">Picked for you</h2></div><div class="railwrap"><button class="arr l" aria-label="Scroll left">‹</button><div class="rail">${cards}</div><button class="arr r" aria-label="Scroll right">›</button></div></section>`);
+    const w = document.querySelector('#picked .railwrap'), r = w.querySelector('.rail');
+    w.querySelector('.l').onclick = () => r.scrollBy({ left: -r.clientWidth * 0.85, behavior: 'smooth' });
+    w.querySelector('.r').onclick = () => r.scrollBy({ left: r.clientWidth * 0.85, behavior: 'smooth' });
+    bindCards();
+  } catch (e) {}
+}
 const getProvMap = () => { try { const o = JSON.parse(localStorage.getItem('provmap') || '{}'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } };
 if ('serviceWorker' in navigator) window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
 const wt = { k: '', t: 0, acc: 0 };
@@ -307,6 +481,7 @@ const getWT = () => { try { const o = JSON.parse(localStorage.getItem('wtime') |
 function flushWT(type) {
   if (!wt.acc) return;
   const o = getWT(); o[type] = (o[type] || 0) + wt.acc; wt.acc = 0;
+  try { const day = new Date().toLocaleDateString('en-CA'), dl = JSON.parse(localStorage.getItem('wdays') || '[]'); if (!dl.includes(day)) { dl.push(day); localStorage.setItem('wdays', JSON.stringify(dl.slice(-400))); } } catch (e) {}
   try { localStorage.setItem('wtime', JSON.stringify(o)); } catch (e) {}
 }
 function showStill(src) {
@@ -411,6 +586,7 @@ try {
   if (theme === 'light') document.body.classList.add('light');
   const accent = localStorage.getItem('accent');
   if (accent) document.documentElement.style.setProperty('--accent', accent);
+  applyPreset(localStorage.getItem('preset') || '');
   const radius = localStorage.getItem('radius');
   if (radius) document.documentElement.style.setProperty('--radius', radius + 'px');
   const opacity = localStorage.getItem('bg_opacity');
@@ -1111,7 +1287,7 @@ async function homeView() {
   let heroHtml = '';
   if (hero) {
     const ov = hero.overview || '', bw = innerWidth > 700 ? 'w1280' : 'w780';
-    heroHtml = `<section class="hero" style="background-image:linear-gradient(0deg,rgba(20,25,34,.92),rgba(20,25,34,.1) 70%),linear-gradient(90deg,rgba(20,25,34,.75),rgba(20,25,34,0) 70%),url(${IMG}${bw}${hero.backdrop_path})"><div class="hero-in"><span class="meta">Trending today</span><h1 dir="auto">${esc(hero.title || hero.name)}</h1><p dir="auto">${esc(ov.slice(0, 220))}${ov.length > 220 ? '…' : ''}</p><button class="primary" id="heroplay">▶ Watch</button><button id="sur">Surprise me</button></div></section>`;
+    heroHtml = `<section class="hero" style="background-image:linear-gradient(0deg,color-mix(in srgb,var(--bg) 92%,transparent),color-mix(in srgb,var(--bg) 10%,transparent) 70%),linear-gradient(90deg,color-mix(in srgb,var(--bg) 75%,transparent),transparent 70%),url(${IMG}${bw}${hero.backdrop_path})"><div class="hero-in"><span class="meta">Trending today</span><h1 dir="auto">${esc(hero.title || hero.name)}</h1><p dir="auto">${esc(ov.slice(0, 220))}${ov.length > 220 ? '…' : ''}</p><button class="primary" id="heroplay">▶ Watch</button><button id="sur">Surprise me</button></div></section>`;
   }
   const html = heroHtml + cwRow().replace('<div class="grid">', '<div class="rail">') +
     row('Trending today', day) + row('Trending this week', week) + row('In theaters now', now) +
@@ -1127,6 +1303,7 @@ async function homeView() {
     w.querySelector('.l').onclick = () => r.scrollBy({ left: -r.clientWidth * 0.85, behavior: 'smooth' });
     w.querySelector('.r').onclick = () => r.scrollBy({ left: r.clientWidth * 0.85, behavior: 'smooth' });
   });
+  homeExtras();
 }
 
 async function upcomingView() {
@@ -1208,6 +1385,17 @@ function bindFilters() {
 }
 
 function bindCards() {
+  applyPosterOverrides();
+  app.querySelectorAll('.card[data-type][data-id]').forEach(c => {
+    if (c.querySelector('.x, .qf')) return;
+    const img = c.querySelector('img'), m = img && (img.getAttribute('src') || '').match(/\/w\d+(\/[^/]+)$/);
+    if (!m) return;
+    const t = c.dataset.type, i = c.dataset.id, b = document.createElement('button');
+    b.className = 'qf'; b.setAttribute('aria-label', 'Add to my list');
+    const paint = () => { const on = isFav(t, i); b.textContent = on ? '♥' : '♡'; b.classList.toggle('on', on); };
+    b.onclick = ev => { ev.stopPropagation(); toggleFav({ type: t, id: +i, name: img.alt || '', poster: m[1], vote: 0, date: '' }); paint(); };
+    paint(); c.appendChild(b);
+  });
   app.querySelectorAll('.card').forEach(c => {
     const go = () => watch(c.dataset.type, c.dataset.id, { s: +c.dataset.s || 1, e: +c.dataset.e || 1, t: +c.dataset.t || 0 });
     c.onclick = go;
@@ -1228,11 +1416,14 @@ function statsDashboard() {
   const fav = lsGet('fav');
   const hist = lsGet('hist');
   const w = getWT(), hrs = v => ((v || 0) / 3600).toFixed(1);
+  let streak = 0;
+  try { const days = new Set(JSON.parse(localStorage.getItem('wdays') || '[]')), d = new Date(), f = () => d.toLocaleDateString('en-CA'); if (!days.has(f())) d.setDate(d.getDate() - 1); while (days.has(f())) { streak++; d.setDate(d.getDate() - 1); } } catch (e) {}
   return `<div class="stats-box">
     <div class="stat-item"><div class="stat-num">${fav.length}</div><div class="stat-lbl">Saved Titles</div></div>
     <div class="stat-item"><div class="stat-num">${hist.length}</div><div class="stat-lbl">History Count</div></div>
     <div class="stat-item"><div class="stat-num">${hrs(w.movie)}h</div><div class="stat-lbl">Movies watched</div></div>
     <div class="stat-item"><div class="stat-num">${hrs(w.tv)}h</div><div class="stat-lbl">Series watched</div></div>
+    <div class="stat-item"><div class="stat-num">🔥${streak}</div><div class="stat-lbl">Day streak</div></div>
   </div>`;
 }
 
@@ -1263,7 +1454,7 @@ function backupBox() {
       </div>
     </div>` : ''}
     <p class="meta">Move your list, history and progress to another device. The file also contains your TMDB key, so keep it private.</p>
-    <div class="bk"><button id="exp">Export backup</button><button id="imp">Import backup</button><button id="forgetkey" style="background:#4a2222;border-color:#7a3333">Forget TMDB Key (Logout)</button></div>
+    <div class="bk"><button id="exp">Export backup</button><button id="imp">Import backup</button><button id="p2psend">📡 Send to another device</button><button id="p2precv">📥 Receive from another device</button><button id="forgetkey" style="background:#4a2222;border-color:#7a3333">Forget TMDB Key (Logout)</button></div>
     <input id="impf" type="file" accept=".json,application/json" hidden>
     <p id="bkmsg" class="meta"></p></div>
     
@@ -1281,6 +1472,19 @@ function backupBox() {
       <div class="tcolor" style="background:#2ecc71" data-color="#2ecc71" title="Emerald"></div>
       <div class="tcolor" style="background:#00bcd4" data-color="#00bcd4" title="Cyan"></div>
       <div class="tcolor" style="background:#e91e63" data-color="#e91e63" title="Pink"></div>
+    </div>
+    <p class="meta" style="margin-top:12px">Themes</p>
+    <div class="theme-opts" style="flex-wrap:wrap;gap:8px">
+      ${Object.keys(THEMES).map(k => { const t = THEMES[k] || { bg: '#141922', text: '#ece9e2', accent: '#ff7a45' }; return `<button class="tpre" data-p="${k}" style="background:${t.bg};color:${t.text};border:2px solid ${t.accent};border-radius:999px;padding:6px 14px;text-transform:capitalize">${k === 'default' ? 'Classic' : k}</button>`; }).join('')}
+      <button id="tprand">🎲 Random</button>
+      <button id="fxtoggle">${localStorage.getItem('fx') === '0' ? '✨ Effects: off' : '✨ Effects: on'}</button>
+    </div>
+    <p class="meta" style="margin-top:12px">Custom colors</p>
+    <div class="theme-opts" style="flex-wrap:wrap;align-items:center;gap:12px">
+      <label class="meta">Accent <input type="color" id="cacc" value="${getCT().accent || '#ff7a45'}"></label>
+      <label class="meta">Background <input type="color" id="cbg" value="${getCT().bg || '#141922'}"></label>
+      <label class="meta">Cards <input type="color" id="csf" value="${getCT().surface || '#1e2532'}"></label>
+      <button id="cthreset">Reset colors</button>
     </div>
 
     <div style="margin-top:12px">
@@ -1395,7 +1599,8 @@ function bindBackup() {
   if (thmsel) thmsel.onchange = () => {
     const light = thmsel.value === 'light';
     document.body.classList.toggle('light', light);
-    try { localStorage.setItem('theme', thmsel.value); } catch (e) {}
+    try { localStorage.setItem('theme', thmsel.value); localStorage.setItem('preset', ''); } catch (e) {}
+    applyPreset('');
   };
   document.querySelectorAll('.tcolor').forEach(tc => {
     tc.onclick = () => {
@@ -1404,6 +1609,29 @@ function bindBackup() {
       try { localStorage.setItem('accent', c); } catch (e) {}
     };
   });
+  document.querySelectorAll('.tpre').forEach(b => b.onclick = () => {
+    const p = b.dataset.p === 'default' ? '' : b.dataset.p;
+    try { localStorage.setItem('preset', p); if (p) localStorage.setItem('theme', 'dark'); } catch (e) {}
+    const th = document.getElementById('thmsel'); if (th && p) th.value = 'dark';
+    applyPreset(p);
+  });
+  const fxt = document.getElementById('fxtoggle');
+  if (fxt) fxt.onclick = () => {
+    const off = localStorage.getItem('fx') !== '0';
+    try { localStorage.setItem('fx', off ? '0' : '1'); } catch (e) {}
+    fxt.textContent = off ? '✨ Effects: off' : '✨ Effects: on';
+    applyFx(THEMES[localStorage.getItem('preset') || '']);
+  };
+  const trand = document.getElementById('tprand');
+  if (trand) trand.onclick = () => { const ks = Object.keys(THEMES).filter(k => k !== 'default'); document.querySelector(`.tpre[data-p="${ks[Math.floor(Math.random() * ks.length)]}"]`).click(); };
+  const saveCT = (k, v) => { const c = getCT(); if (v) c[k] = v; else delete c[k]; try { localStorage.setItem('custom_theme', JSON.stringify(c)); } catch (e) {} applyCustomTheme(); };
+  [['cacc', 'accent'], ['cbg', 'bg'], ['csf', 'surface']].forEach(([i, k]) => { const el = document.getElementById(i); if (el) el.oninput = () => saveCT(k, el.value); });
+  const ctr = document.getElementById('cthreset');
+  if (ctr) ctr.onclick = () => {
+    try { localStorage.removeItem('custom_theme'); localStorage.removeItem('accent'); } catch (e) {}
+    applyPreset(localStorage.getItem('preset') || '');
+    ctr.textContent = 'Reset ✓';
+  };
   const pb = document.getElementById('pnbtn');
   if (pb) pb.onclick = showPatchNotes;
   const sa = document.getElementById('shareapp');
@@ -1416,8 +1644,45 @@ function bindBackup() {
   };
   const uc = document.getElementById('upchk'); if (uc) uc.onclick = () => checkUpdate(true);
   const say = t => { const m = document.getElementById('bkmsg'); if (m) m.textContent = t; };
+  let p2pPeer = null;
+  const p2pStop = () => { if (p2pPeer) { try { p2pPeer.destroy(); } catch (e) {} p2pPeer = null; } };
+  const ps = document.getElementById('p2psend'), pr = document.getElementById('p2precv');
+  if (ps) ps.onclick = () => {
+    if (typeof Peer === 'undefined') return say('Peer library not loaded. Check your connection.');
+    p2pStop();
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    p2pPeer = new Peer('sr-sync-' + code, PEER_CFG);
+    p2pPeer.on('open', () => say(`Code ${code} — open "Receive" on the other device and enter it (valid 5 min).`));
+    p2pPeer.on('error', () => say('Could not start. Try again.'));
+    p2pPeer.on('connection', conn => {
+      conn.on('open', () => conn.send({ type: 'library', data: buildBackup() }));
+      conn.on('data', m => { if (m && m.type === 'ack') { say('Library sent ✓'); setTimeout(p2pStop, 1000); } });
+    });
+    setTimeout(p2pStop, 300000);
+  };
+  if (pr) pr.onclick = () => {
+    if (typeof Peer === 'undefined') return say('Peer library not loaded. Check your connection.');
+    const code = (prompt('Enter the 6-digit code shown on the other device:') || '').trim();
+    if (!/^\d{6}$/.test(code)) return;
+    p2pStop();
+    say('Connecting…');
+    p2pPeer = new Peer(PEER_CFG);
+    p2pPeer.on('error', () => say('Could not connect. Check the code and try again.'));
+    p2pPeer.on('open', () => {
+      const conn = p2pPeer.connect('sr-sync-' + code, { reliable: true });
+      const to = setTimeout(() => say('No answer. Check the code and try again.'), 15000);
+      conn.on('data', m => {
+        if (!m || m.type !== 'library' || !m.data) return;
+        clearTimeout(to);
+        pendingImport = m.data;
+        if (f && f.onchange) f.onchange();
+        try { conn.send({ type: 'ack' }); } catch (e) {}
+        setTimeout(p2pStop, 1500);
+      });
+    });
+  };
   if (exp) exp.onclick = () => {
-    const data = { app: 'screenroom', v: 1, key, profile: getUserProfile(), fav: lsGet('fav'), hist: lsGet('hist'), cw: getCW(), watched: getW() };
+    const data = buildBackup();
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
     a.download = 'screenroom-backup.json';
@@ -1428,7 +1693,8 @@ function bindBackup() {
     imp.onclick = () => f.click();
     f.onchange = async () => {
       try {
-        const d = JSON.parse(await f.files[0].text());
+        const d = pendingImport || JSON.parse(await f.files[0].text());
+        pendingImport = null;
         if (d.app !== 'screenroom') throw new Error('bad file');
         const merge = (k, inc, prefer) => {
           const out = lsGet(k);
@@ -1444,6 +1710,15 @@ function bindBackup() {
           Object.keys(d.watched).forEach(k => { w[k] = [...new Set([...(w[k] || []), ...(d.watched[k] || [])])]; });
           try { localStorage.setItem('watched', JSON.stringify(w)); } catch (e2) {}
         }
+        if (d.lists && typeof d.lists === 'object' && !Array.isArray(d.lists)) {
+          const L = getLists();
+          Object.keys(d.lists).forEach(n => { const out = L[n] || []; (Array.isArray(d.lists[n]) ? d.lists[n] : []).filter(x => x && x.type && x.id).forEach(a => { if (!out.some(c => same(c, a.type, a.id))) out.push(a); }); L[n] = out; });
+          setLists(L);
+        }
+        if (d.posters && typeof d.posters === 'object' && !Array.isArray(d.posters)) { try { localStorage.setItem('posters', JSON.stringify({ ...d.posters, ...getPosters() })); } catch (e2) {} }
+        if (Array.isArray(d.done)) lsSet('done', [...new Set([...lsGet('done'), ...d.done.filter(x => typeof x === 'string')])]);
+        if (d.wtime && typeof d.wtime === 'object') { const w = getWT(); ['movie', 'tv'].forEach(k => { w[k] = Math.max(+w[k] || 0, +d.wtime[k] || 0); }); try { localStorage.setItem('wtime', JSON.stringify(w)); } catch (e2) {} }
+        if (d.myrate && typeof d.myrate === 'object' && !Array.isArray(d.myrate)) { try { localStorage.setItem('myrate', JSON.stringify({ ...d.myrate, ...getMR() })); } catch (e2) {} }
         if (d.key && !key) { key = String(d.key); try { localStorage.setItem('tmdb_key', key); } catch (e) {} }
         if (d.profile && typeof d.profile === 'object') saveUserProfile(d.profile.name, d.profile.pfp);
         if (tab === 'list') listView(); else if (key) home();
@@ -1459,9 +1734,9 @@ function listView() {
   updateBackVisibility(); clearHash();
   const filterHeader = `<div class="filters" style="margin-bottom:14px">
     <select id="lfsel"><option value="all"${listFilter==='all'?' selected':''}>All types</option><option value="movie"${listFilter==='movie'?' selected':''}>Movies only</option><option value="tv"${listFilter==='tv'?' selected':''}>Series only</option></select>
-    <select id="lfsort"><option value="added"${listSort==='added'?' selected':''}>Date added</option><option value="alpha"${listSort==='alpha'?' selected':''}>Alphabetical</option><option value="rating"${listSort==='rating'?' selected':''}>Rating</option><option value="release"${listSort==='release'?' selected':''}>Release date</option></select>
+    <select id="lfsort"><option value="added"${listSort==='added'?' selected':''}>Date added</option><option value="alpha"${listSort==='alpha'?' selected':''}>Alphabetical</option><option value="rating"${listSort==='rating'?' selected':''}>Rating</option><option value="release"${listSort==='release'?' selected':''}>Release date</option><option value="mine"${listSort==='mine'?' selected':''}>My rating</option></select>
     <select id="lfstat"><option value="all"${listStatus==='all'?' selected':''}>All</option><option value="unwatched"${listStatus==='unwatched'?' selected':''}>Unwatched</option><option value="done"${listStatus==='done'?' selected':''}>Completed</option></select>
-    <button id="csvexp">⬇ CSV</button><button id="csvimp">⬆ Import CSV</button><button id="hidew">${localStorage.getItem('hidew') === '1' ? '🙈 Hiding watched on Home' : '👁 Show watched on Home'}</button><input id="csvfile" type="file" accept=".csv,text/csv" hidden><span id="csvstat" class="meta"></span>
+    <button id="csvexp">⬇ CSV</button><button id="csvimp">⬆ Import CSV</button><button id="hidew">${localStorage.getItem('hidew') === '1' ? '🙈 Hiding watched on Home' : '👁 Show watched on Home'}</button><input id="csvfile" type="file" accept=".csv,text/csv" hidden><button id="wrapbtn">🎁 My Wrapped</button><button id="pickrnd">🎲 Pick for me</button><span id="csvstat" class="meta"></span>
   </div>`;
 
   const filterList = l => {
@@ -1469,6 +1744,7 @@ function listView() {
     if (listStatus !== 'all') out = out.filter(x => isDone(x.type, x.id) === (listStatus === 'done'));
     if (listSort === 'rating') out = [...out].sort((a, b) => (b.vote || 0) - (a.vote || 0));
     else if (listSort === 'release') out = [...out].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    else if (listSort === 'mine') out = [...out].sort((a, b) => (getMR()[b.type + '/' + b.id] || 0) - (getMR()[a.type + '/' + a.id] || 0));
     if (listSort === 'alpha') {
       out = [...out].sort((a,b) => (a.name || '').localeCompare(b.name || ''));
     }
@@ -1497,6 +1773,15 @@ function listView() {
     if (!confirm('Delete this list? Titles stay elsewhere in Screenroom.')) return;
     const L = getLists(); delete L[b.dataset.n]; setLists(L); listView();
   });
+  const wrapbtn = document.getElementById('wrapbtn');
+  if (wrapbtn) wrapbtn.onclick = showWrapped;
+  const pickrnd = document.getElementById('pickrnd');
+  if (pickrnd) pickrnd.onclick = () => {
+    const pool = lsGet('fav').filter(x => !isDone(x.type, x.id) && !isBlocked(x.type, x.id));
+    if (!pool.length) { pickrnd.textContent = 'Nothing unwatched in your list'; return; }
+    const x = pool[Math.floor(Math.random() * pool.length)];
+    watch(x.type, x.id);
+  };
   const hidew = document.getElementById('hidew');
   if (hidew) hidew.onclick = () => { try { localStorage.setItem('hidew', localStorage.getItem('hidew') === '1' ? '0' : '1'); } catch (e) {} listView(); };
   const csvfile = document.getElementById('csvfile'), csvimp = document.getElementById('csvimp');
@@ -1699,6 +1984,7 @@ async function watch(type, id, res = {}, fromBack = false) {
         </p>
         ${directorOrCreator ? `<p class="meta"><b>${type === 'movie' ? 'Director' : 'Creator'}:</b> <span id="dir-link" style="color:var(--accent);cursor:pointer;text-decoration:underline">${esc(directorOrCreator)}</span></p>` : ''}
         ${financialTxt ? `<p class="meta">${esc(financialTxt)}</p>` : ''}
+        <div id="mystars" class="meta" style="margin:6px 0"></div>
         ${(() => { const src = (type === 'tv' ? d.networks : d.production_companies) || []; const l = src.filter(x => x.logo_path).slice(0, 4); return l.length ? `<div class="studios">${l.map(x => `<img loading="lazy" src="${IMG}w185${x.logo_path}" alt="${esc(x.name)}" title="${esc(x.name)}">`).join('')}</div>` : ''; })()}
         <div class="chips">
           ${(d.genres || []).map(g => `<span class="chip" data-gid="${g.id}">${esc(g.name)}</span>`).join('')}
@@ -1706,8 +1992,11 @@ async function watch(type, id, res = {}, fromBack = false) {
         <div class="acts">
           <button id="fav" class="${isFav(type, id) ? 'on' : ''}">${isFav(type, id) ? '♥ In my list' : '♡ Add to my list'}</button>
           <button id="addlist">＋ List</button>
+          <button id="postbtn">🖼 Poster</button>
           <button id="tramp">▶ Trailer</button>
           <button id="share">Share</button>
+          <button id="sandbtn">🧪 Embed test</button>
+          <button id="sleepbtn">😴 Sleep</button>
           <button id="theater">Theater mode</button>
           ${imdbLink ? `<a href="${imdbLink}" target="_blank" rel="noopener"><button>IMDb ↗</button></a>` : ''}
           <a href="${rtLink}" target="_blank" rel="noopener"><button>Rotten Tomatoes ↗</button></a>
@@ -1780,8 +2069,36 @@ async function watch(type, id, res = {}, fromBack = false) {
 
     document.getElementById('theater').onclick = enterTheater;
     document.getElementById('tramp').onclick = () => showTrailerModal(type, id);
+    const paintStars = () => {
+      const el = document.getElementById('mystars'); if (!el) return;
+      const k = type + '/' + id, v = getMR()[k] || 0;
+      el.innerHTML = 'My rating: ' + [1, 2, 3, 4, 5].map(n => `<span data-n="${n}" style="cursor:pointer;font-size:24px;padding:0 2px;color:${n <= v ? 'var(--accent)' : 'var(--muted)'}">★</span>`).join('');
+      el.querySelectorAll('span').forEach(sp => sp.onclick = () => {
+        const m = getMR(), n = +sp.dataset.n;
+        if (m[k] === n) delete m[k]; else m[k] = n;
+        try { localStorage.setItem('myrate', JSON.stringify(m)); } catch (e) {}
+        paintStars();
+      });
+    };
+    paintStars();
+    document.getElementById('sandbtn').onclick = showSandbox;
+    document.getElementById('sleepbtn').onclick = ev => {
+      const btn = ev.currentTarget; clearTimeout(window.__sleepT);
+      const m = parseInt(prompt('Stop playback in how many minutes? (15, 30, 45, 60 — 0 cancels)', '30'), 10);
+      if (!m || m < 1) { btn.textContent = '😴 Sleep'; return; }
+      btn.textContent = `😴 ${m} min`;
+      window.__sleepT = setTimeout(() => {
+        clearInterval(nextTimer);
+        const f = document.getElementById('frame'); if (f) f.src = 'about:blank';
+        if (document.body.classList.contains('theater')) exitTheater();
+        const nb = document.getElementById('next');
+        if (nb) nb.innerHTML = '<div class="nextup"><span>😴 Sleep timer: playback stopped. Good night!</span></div>';
+      }, m * 60000);
+    };
     document.getElementById('share').onclick = async ev => {
-      const url = location.href;
+      const tt = Math.floor(party.lastTime || 0);
+      const base = location.origin + location.pathname + `#${current.type}/${current.id}` + (current.type === 'tv' ? `/${current.s}/${current.e}` : '');
+      const url = tt > 10 ? base + `?t=${tt}&prov=${encodeURIComponent(playerProv)}` : base;
       try {
         if (navigator.share) await navigator.share({ title: name, url });
         else { await navigator.clipboard.writeText(url); ev.target.textContent = 'Link copied'; setTimeout(() => { ev.target.textContent = 'Share'; }, 2000); }
@@ -1790,6 +2107,16 @@ async function watch(type, id, res = {}, fromBack = false) {
     loadCast(type, id);
     loadCollection(d);
     loadSimilar(type, id);
+    document.getElementById('postbtn').onclick = ev => {
+      const btn = ev.currentTarget, m = getPosters(), k = current.type + '/' + current.id;
+      const u = prompt('Custom poster image link (https://…). Leave empty to remove it:', m[k] || '');
+      if (u === null) return;
+      const v = u.trim();
+      if (v && !/^https:\/\//i.test(v)) { alert('Please use an https:// image link.'); return; }
+      if (v) m[k] = v; else delete m[k];
+      try { localStorage.setItem('posters', JSON.stringify(m)); } catch (e) {}
+      btn.textContent = '✓ Saved'; setTimeout(() => { btn.textContent = '🖼 Poster'; }, 1800);
+    };
     document.getElementById('addlist').onclick = ev => {
       const btn = ev.currentTarget, L = getLists(), names = Object.keys(L);
       const n = (prompt('Add to / remove from which list?' + (names.length ? '\nYour lists: ' + names.join(', ') : '') + '\nType a name (a new name creates a list):') || '').trim().slice(0, 30);
@@ -2084,6 +2411,13 @@ function showNext(s, e) {
 }
 
 const PATCHNOTES = [
+  { v: '45', c: ['Quick ♡ on every poster: tap to add or remove a title from My list without opening it. New 🎁 My Wrapped card in My list: your hours, days watched, completed titles and top-rated picks.'] },
+  { v: '44', c: ['Rate titles with your own 5 stars (sort My list by My rating). Mood buttons on Home (Comedy, Horror, Romance…). Daily watching streak 🔥 in your stats. A secret surprise: tap the logo 7 times, or try the Konami code on a keyboard.'] },
+  { v: '43', c: ['New themes: Miku, Teto, Rei (with floating ♪ / 🥖 / ✦ effects, switchable), plus Synthwave, Cyber and Matrix. New 😴 Sleep timer on title pages to stop playback after a delay. New 🎲 Pick for me button in My list chooses an unwatched title from your favorites.'] },
+  { v: '42', c: ['9 new themes in Settings: AMOLED, Midnight, Dracula, Nord, Forest, Sunset, Rose, Coffee, Gold (plus a Random button). The home banner and the iPhone status bar now follow your theme.'] },
+  { v: '41', c: ['Home: new “Picked for you” row, scored from the genres and titles in your history. A banner tells you when a favorite series has a new episode (checked when you open the app). Settings: send or receive your whole library between two devices with a 6-digit code, no file needed.'] },
+  { v: '40', c: ['Custom poster: tap 🖼 Poster on a title page and paste an image link; it replaces the poster on your cards. Backups now also include your custom lists, custom posters, completed titles and watch-time stats.'] },
+  { v: '39', c: ['Share now copies a link that opens at the moment you are at (if you are past 10s). New 🧪 Embed test button on title pages to try any https player URL. Settings: custom color pickers for accent, background and cards, with a reset.'] },
   { v: '38', c: ['Resume prompt when you reopen a title you were watching. Choose the next-episode countdown (5/8/10/15s or off) under the player. Each title remembers the player source you picked. Offline mode: the app shell now opens without internet after one online visit (needs sw.js). Player allows its own Picture-in-Picture button.'] },
   { v: '37', c: ['Real watch-time stats (hours of movies and series) in My list. Network / studio logos on title pages. New button in My list to hide completed titles from the Home rows.'] },
   { v: '36', c: ['Actor pages: filter All / Movies / TV Shows. Episode thumbnails: tap the ⤢ button to zoom the image. Title pages: the original-language title is shown under the translated one.'] },
@@ -2272,7 +2606,7 @@ loadBlocked().then(async () => {
     if (provParam && ['vidyst', 'multiembed', 'vidsrc'].includes(provParam)) playerProv = provParam;
     if (!key && partyRoom) key = '5d0979bf39cd11dbb4d24177b8b4b76c';
     if (key) {
-      watch(mType, mId, { s: +(mS || 1), e: +(mE || 1), t: 0 }).then(() => {
+      watch(mType, mId, { s: +(mS || 1), e: +(mE || 1), t: Math.max(0, +qp.get('t') || 0) }).then(() => {
         if (partyRoom) joinWatchParty(partyRoom);
       });
       return;
