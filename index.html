@@ -213,6 +213,7 @@ body.theater nav{display:none}
 #amb{position:fixed;inset:0;z-index:-1;background-size:cover;background-position:center top;opacity:0;transition:opacity .6s;pointer-events:none}
 #amb.on{opacity:var(--bg-opacity)}
 
+.sov{margin:0 0 12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px}.sov summary{cursor:pointer;font-weight:600}.sov p{margin:8px 0 0;color:var(--muted);font-size:14px;line-height:1.5}
 .party-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:12px}
 .party-bar.active{border-color:var(--accent);box-shadow:0 0 12px rgba(255,122,69,0.2)}
 .party-badge{background:var(--accent);color:#141922;font-weight:700;font-size:12px;padding:2px 8px;border-radius:999px}
@@ -280,7 +281,7 @@ body.theater #next{position:fixed;left:50%;transform:translateX(-50%);bottom:cal
 <p class="attr">This product uses the TMDB API but is not endorsed or certified by TMDB. <span id="contact"></span></p>
 
 <script>
-const APP_VERSION = '29';
+const APP_VERSION = '33';
 const IMG = 'https://image.tmdb.org/t/p/';
 const app = document.getElementById('app');
 const q = document.getElementById('q');
@@ -289,7 +290,68 @@ const backBtn = document.getElementById('back');
 const totopBtn = document.getElementById('totop');
 let key = '', tab = 'all', current = null, lastSave = 0, filt = { genre: '', year: '', sort: 'popular', minVote: '', minRating: '' }, genres = {}, nextTimer = null, lastCheck = 0, lang = 'en-US';
 let playerProv = 'vidyst';
-let listFilter = 'all', listSort = 'added';
+let listFilter = 'all', listSort = 'added', listStatus = 'all';
+const isDone = (type, id) => lsGet('done').includes(type + '/' + id);
+const getLists = () => { try { const o = JSON.parse(localStorage.getItem('lists') || '{}'); return o && typeof o === 'object' && !Array.isArray(o) ? o : {}; } catch (e) { return {}; } };
+const setLists = o => { try { localStorage.setItem('lists', JSON.stringify(o)); } catch (e) {} };
+async function importCsv(file) {
+  const say = t => { const e = document.getElementById('csvstat'); if (e) e.textContent = t; };
+  let text = '';
+  try { text = await file.text(); } catch (e) { return say('Could not read file.'); }
+  text = text.replace(/^\uFEFF/, '');
+  const rows = []; let row = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += c; }
+    else if (c === '"') q = true;
+    else if (c === ',') { row.push(cell); cell = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(cell); cell = ''; if (row.some(x => x)) rows.push(row); row = []; }
+    else cell += c;
+  }
+  row.push(cell); if (row.some(x => x)) rows.push(row);
+  if (rows.length < 2) return say('Empty CSV.');
+  const h = rows[0].map(x => x.trim().toLowerCase());
+  const col = (...n) => h.findIndex(x => n.includes(x));
+  const cId = col('tmdbid'), cIm = col('const'), cT = col('title', 'name'), cY = col('year'), cTy = col('type', 'title type');
+  if (cId < 0 && cIm < 0 && cT < 0) return say('No Title / Name column found.');
+  const data = rows.slice(1, 201);
+  const norm = (type, o) => ({ type, id: o.id, name: o.title || o.name || '', poster: o.poster_path, vote: o.vote_average || 0, date: o.release_date || o.first_air_date || '', added: Date.now() });
+  const fav = lsGet('fav'), fresh = []; let miss = 0;
+  for (let i = 0; i < data.length; i++) {
+    say(`Importing ${i + 1}/${data.length}…`);
+    const r = data[i], g = c => c >= 0 ? (r[c] || '').trim() : '';
+    const tv = /series|^tv$/.test(g(cTy).toLowerCase());
+    let hit = null;
+    try {
+      if (/^\d+$/.test(g(cId))) { const t = tv ? 'tv' : 'movie'; hit = norm(t, await api(`/${t}/${g(cId)}`)); }
+      else if (/^tt\d+$/.test(g(cIm))) {
+        const f = await api(`/find/${g(cIm)}`, '&external_source=imdb_id');
+        if (f.movie_results && f.movie_results[0]) hit = norm('movie', f.movie_results[0]);
+        else if (f.tv_results && f.tv_results[0]) hit = norm('tv', f.tv_results[0]);
+      } else if (g(cT)) {
+        const t = tv ? 'tv' : 'movie', y = g(cY) ? (tv ? '&first_air_date_year=' : '&year=') + encodeURIComponent(g(cY)) : '';
+        const sr = await api(`/search/${t}`, `&query=${encodeURIComponent(g(cT))}${y}`);
+        if (sr.results && sr.results[0]) hit = norm(t, sr.results[0]);
+      }
+    } catch (e) {}
+    if (!hit || !hit.id || isBlocked(hit.type, hit.id)) { miss++; continue; }
+    if (fav.some(x => same(x, hit.type, hit.id)) || fresh.some(x => same(x, hit.type, hit.id))) continue;
+    fresh.push(hit);
+  }
+  lsSet('fav', [...fresh, ...fav]);
+  listView();
+  say(`Imported ${fresh.length} new, ${miss} not found.`);
+}
+['dragover', 'drop'].forEach(t => window.addEventListener(t, ev => {
+  if (!(ev.dataTransfer && [...(ev.dataTransfer.types || [])].includes('Files'))) return;
+  ev.preventDefault();
+  if (t === 'drop') { const f = [...ev.dataTransfer.files].find(x => /\.csv$/i.test(x.name)); if (f && key) importCsv(f); }
+}));
+function markDone(type, id, on = true) {
+  let l = lsGet('done').filter(x => x !== type + '/' + id);
+  if (on) l.push(type + '/' + id);
+  lsSet('done', l);
+}
 let soundEnabled = true;
 let customBrand = 'Screenroom';
 
@@ -475,13 +537,29 @@ function saveProgress(t, dur, done) {
 }
 // --- TMDB-Key Linked Profile & P2P Serverless Watch Party + Low-Latency Chat ---
 const DEFAULT_AVATAR = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='32' fill='%232c3547'/><circle cx='32' cy='24' r='11' fill='%23ece9e2'/><path d='M14 54c3-11 33-11 36 0' fill='%23ece9e2'/></svg>";
-let party = { active: false, role: null, roomId: null, peer: null, conns: [], hostConn: null, lastTime: 0, lastState: 'paused', lastBroadcast: 0, messages: [], unread: 0, theaterChatOpen: false };
+function newParty(o = {}) {
+  return Object.assign({ active: false, role: null, roomId: null, peer: null, conns: [], hostConn: null, lastTime: 0, lastState: 'paused', lastBroadcast: 0, messages: [], seen: {}, unread: 0, theaterChatOpen: false, closing: false, retry: 0 }, o);
+}
+let party = newParty();
+const PEER_CFG = { debug: 0, config: { iceServers: [
+  { urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478' },
+  { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+] } };
 
 function getProfileStorageKey() {
   const k = (key || 'demo').trim();
   let h = 0;
   for (let i = 0; i < k.length; i++) h = ((h << 5) - h + k.charCodeAt(i)) | 0;
   return 'sr_profile_' + Math.abs(h).toString(36);
+}
+
+function getDiscordProfile() {
+  try {
+    const raw = localStorage.getItem('sr_discord_profile');
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return null;
 }
 
 function getUserProfile() {
@@ -491,6 +569,8 @@ function getUserProfile() {
       const p = JSON.parse(raw);
       if (p && (p.name || p.pfp)) return { name: String(p.name || 'Viewer').slice(0, 24), pfp: String(p.pfp || DEFAULT_AVATAR) };
     }
+    const disc = getDiscordProfile();
+    if (disc && (disc.name || disc.pfp)) return { name: String(disc.name).slice(0, 24), pfp: String(disc.pfp || DEFAULT_AVATAR) };
   } catch (e) {}
   return { name: 'Viewer #' + Math.floor(100 + Math.random() * 899), pfp: DEFAULT_AVATAR };
 }
@@ -503,6 +583,12 @@ function saveUserProfile(name, pfp) {
   };
   try { localStorage.setItem(getProfileStorageKey(), JSON.stringify(next)); } catch (e) {}
   return next;
+}
+
+function startDiscordOAuth() {
+  const clientId = '1570548719110328420';
+  const redirectUri = encodeURIComponent('https://coolr2loulou-source.github.io/screenroom/');
+  window.location.href = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=token&scope=identify`;
 }
 
 async function syncProfileFromTmdbAccount() {
@@ -524,6 +610,8 @@ async function syncProfileFromTmdbAccount() {
 }
 
 function appendChatMessage(msg, isMe = false) {
+  if (!party.messages) party.messages = [];
+  if (msg.id) { if (party.seen[msg.id]) return; party.seen[msg.id] = 1; }
   party.messages.push({ ...msg, isMe });
   if (party.messages.length > 100) party.messages.shift();
   if (document.body.classList.contains('theater') && !party.theaterChatOpen && !isMe) {
@@ -575,7 +663,7 @@ function sendPartyChat(text) {
     try { party.hostConn.send(packet); sent = true; } catch (e) {}
   }
   if (!sent && party.active) {
-    appendChatMessage({ sys: true, text: '⚠️ Message kept locally (waiting for peer connection to establish…)' }, false);
+    appendChatMessage({ sys: true, text: '⚠️ Not delivered yet — not connected to the party.' }, true);
   }
 }
 
@@ -659,7 +747,7 @@ function updatePartyUI() {
   } else {
     const connected = party.hostConn && party.hostConn.open;
     bar.innerHTML = `<span class="party-badge">WATCH PARTY GUEST</span>
-      <span class="party-peers">${connected ? '🟢 Synced with host' : '🟡 Connecting to host…'}</span>
+      <span class="party-peers">${connected ? '🟢 Synced with host' : '🟡 Connecting to host…' + (party.retry > 1 ? ' (try ' + party.retry + ')' : '')}</span>
       <button id="reqsync">🔄 Resync</button>
       <button id="leaveparty">Leave Party</button>${profileHtml}`;
     bindProfileControls();
@@ -721,9 +809,9 @@ function startWatchParty() {
   if (typeof Peer === 'undefined') { alert('PeerJS failed to load. Check your internet connection.'); return; }
   leaveWatchParty();
   const roomId = 'sr-' + Math.random().toString(36).slice(2, 8) + '-' + Date.now().toString(36).slice(-4);
-  party = { active: true, role: 'host', roomId, peer: null, conns: [], hostConn: null, lastTime: 0, lastState: 'playing', lastBroadcast: 0 };
+  party = newParty({ active: true, role: 'host', roomId, lastState: 'playing' });
   updatePartyUI();
-  const peer = new Peer(roomId, { debug: 0 });
+  const peer = new Peer(roomId, PEER_CFG);
   party.peer = peer;
   peer.on('open', () => {
     updatePartyUI();
@@ -734,6 +822,7 @@ function startWatchParty() {
     conn.on('open', () => {
       updatePartyUI();
       broadcastPartyState(true);
+      try { conn.send({ type: 'history', msgs: party.messages.filter(m => !m.sys).slice(-30).map(m => ({ type: 'chat', id: m.id, name: m.name, pfp: m.pfp, text: m.text, ts: m.ts })) }); } catch (e) {}
       appendChatMessage({ sys: true, text: 'A friend joined the party!' }, true);
     });
     conn.on('data', msg => {
@@ -750,23 +839,34 @@ function startWatchParty() {
       appendChatMessage({ sys: true, text: 'A friend left the party.' }, true);
     });
   });
-  peer.on('error', () => {
-    const bar = document.getElementById('party-bar');
-    if (bar) bar.innerHTML += `<span style="color:#ff8a8a;font-size:12px">Connection hiccup — retrying…</span>`;
+  peer.on('disconnected', () => { if (!party.closing && party.peer === peer) { try { peer.reconnect(); } catch (e) {} } });
+  peer.on('error', err => {
+    if (party.closing || party.peer !== peer) return;
+    if (err && err.type === 'unavailable-id') { startWatchParty(); return; }
+    if (err && (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error')) setTimeout(() => { if (!party.closing && party.peer === peer && peer.disconnected) { try { peer.reconnect(); } catch (e) {} } }, 2000);
   });
 }
 
 function joinWatchParty(roomId) {
   if (typeof Peer === 'undefined') return;
   leaveWatchParty();
-  party = { active: true, role: 'guest', roomId, peer: null, conns: [], hostConn: null, lastTime: 0, lastState: 'playing', lastBroadcast: 0 };
+  party = newParty({ active: true, role: 'guest', roomId, lastState: 'playing' });
   updatePartyUI();
-  const peer = new Peer({ debug: 0 });
+  const peer = new Peer(PEER_CFG);
   party.peer = peer;
-  peer.on('open', () => {
+  const connectHost = () => {
+    if (party.closing || party.peer !== peer || !peer.open) return;
     const conn = peer.connect(roomId, { reliable: true });
     party.hostConn = conn;
+    let opened = false;
+    const retry = () => {
+      if (party.closing || party.peer !== peer || party.hostConn !== conn) return;
+      party.retry++;
+      updatePartyUI();
+      setTimeout(connectHost, Math.min(1500 * party.retry, 8000));
+    };
     conn.on('open', () => {
+      opened = true; party.retry = 0;
       updatePartyUI();
       conn.send({ type: 'req_sync' });
       const prof = getUserProfile();
@@ -776,10 +876,27 @@ function joinWatchParty(roomId) {
       if (!msg) return;
       if (msg.type === 'sync') applyHostSync(msg);
       else if (msg.type === 'chat') appendChatMessage(msg, false);
+      else if (msg.type === 'history' && Array.isArray(msg.msgs)) msg.msgs.forEach(m => appendChatMessage(m, false));
     });
-    conn.on('close', () => updatePartyUI());
+    conn.on('close', retry);
+    conn.on('error', retry);
+    setTimeout(() => { if (!opened && party.hostConn === conn && !party.closing) { try { conn.close(); } catch (e) {} retry(); } }, 10000);
+  };
+  peer.on('open', connectHost);
+  peer.on('disconnected', () => { if (!party.closing && party.peer === peer) { try { peer.reconnect(); } catch (e) {} } });
+  peer.on('error', err => {
+    if (party.closing || party.peer !== peer) return;
+    if (err && err.type === 'peer-unavailable') { party.retry++; updatePartyUI(); setTimeout(connectHost, Math.min(2000 * party.retry, 8000)); }
   });
 }
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden || !party.active || party.closing) return;
+  if (party.role === 'guest') {
+    if (party.hostConn && party.hostConn.open) { try { party.hostConn.send({ type: 'req_sync' }); } catch (e) {} }
+    else if (party.peer && party.peer.open) { party.retry = 0; try { party.peer.disconnect(); party.peer.reconnect(); } catch (e) {} }
+  } else if (party.peer && party.peer.disconnected) { try { party.peer.reconnect(); } catch (e) {} }
+});
 
 function applyHostSync(msg) {
   if (!current) return;
@@ -818,8 +935,9 @@ function applyHostSync(msg) {
 }
 
 function leaveWatchParty() {
+  party.closing = true;
   if (party.peer) { try { party.peer.destroy(); } catch (e) {} }
-  party = { active: false, role: null, roomId: null, peer: null, conns: [], hostConn: null, lastTime: 0, lastState: 'paused', lastBroadcast: 0, messages: [], unread: 0, theaterChatOpen: false };
+  party = newParty();
   updatePartyUI();
 }
 
@@ -841,7 +959,7 @@ window.addEventListener('message', ev => {
   } else if (p.event === 'ended') {
     party.lastState = 'paused';
     if (current && current.type === 'tv') { setW(current.id, current.s, current.e, true); if (epRedraw) epRedraw(); }
-    saveProgress(0, 0, true); nextUp();
+    saveProgress(0, 0, true); if (current && current.type === 'movie') markDone('movie', current.id); nextUp();
   } else if (p.event === 'timeupdate') {
     party.lastState = 'playing';
     if (now - lastSave > 5000) {
@@ -863,7 +981,7 @@ const same = (a, type, id) => a.type === type && String(a.id) === String(id);
 const isFav = (type, id) => lsGet('fav').some(x => same(x, type, id));
 function toggleFav(it) {
   let l = lsGet('fav'); const has = l.some(x => same(x, it.type, it.id));
-  l = has ? l.filter(x => !same(x, it.type, it.id)) : [{ type: it.type, id: it.id, name: it.name, poster: it.poster }, ...l];
+  l = has ? l.filter(x => !same(x, it.type, it.id)) : [{ type: it.type, id: it.id, name: it.name, poster: it.poster, vote: it.vote || 0, date: it.date || '', added: Date.now() }, ...l];
   lsSet('fav', l); return !has;
 }
 function addHist(it) {
@@ -910,11 +1028,7 @@ function showSetup(err) {
     home();
   };
   const dlogin = document.getElementById('discordlogin');
-  if (dlogin) dlogin.onclick = () => {
-    const clientId = '1570548719110328420';
-    const redirectUri = encodeURIComponent('https://coolr2loulou-source.github.io/screenroom/');
-    window.location.href = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=token&scope=identify`;
-  };
+  if (dlogin) dlogin.onclick = startDiscordOAuth;
 }
 
 async function home(fromBack = false) {
@@ -1089,7 +1203,23 @@ function statsDashboard() {
 
 function backupBox() {
   const isSharedKey = !key || key === '5d0979bf39cd11dbb4d24177b8b4b76c';
-  return `<div class="row"><h2 class="sec">Backup & Key Management</h2>
+  const disc = getDiscordProfile();
+  const discordSection = `<div class="row"><h2 class="sec">Discord Account</h2>
+    ${disc
+      ? `<div style="display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:10px;max-width:460px">
+          <img src="${esc(disc.pfp || DEFAULT_AVATAR)}" onerror="this.src='${DEFAULT_AVATAR}'" style="width:42px;height:42px;border-radius:50%;object-fit:cover;border:2px solid #5865F2" alt="">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:15px">${esc(disc.name)}</div>
+            <div class="meta" style="margin:0;font-size:12px">Connected via Discord OAuth2</div>
+          </div>
+          <button id="resyncdiscord" style="background:#5865F2;color:#fff;border-color:#5865F2;font-size:13px;padding:6px 10px">Refresh</button>
+          <button id="unlinkdiscord" style="font-size:13px;padding:6px 10px">Unlink</button>
+        </div>`
+      : `<p class="meta">Connect your Discord account to automatically sync your Discord username and profile picture for Watch Parties.</p>
+         <button id="linkdiscord" style="background:#5865F2;color:#fff;border-color:#5865F2;font-weight:700">🎮 Connect Discord Account</button>`
+    }
+  </div>`;
+  return discordSection + `<div class="row"><h2 class="sec">Backup & Key Management</h2>
     ${isSharedKey ? `<div style="background:rgba(255,180,50,0.12);border:1px solid rgba(255,180,50,0.45);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#ffd080;line-height:1.45">
       ⚠️ <b>Warning — Shared Temporary Key Active:</b> You are currently using the shared temporary TMDB API key. Because this key is shared across temporary/Discord sessions, it may hit rate limits. It is strongly recommended to replace it with your own personal key from <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:underline">themoviedb.org</a>.
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
@@ -1169,6 +1299,14 @@ function bindBackup() {
     listView();
     const m = document.getElementById('bkmsg');
     if (m) m.textContent = 'Personal TMDB API key saved!';
+  };
+
+  const ld = document.getElementById('linkdiscord') || document.getElementById('resyncdiscord');
+  if (ld) ld.onclick = startDiscordOAuth;
+  const ud = document.getElementById('unlinkdiscord');
+  if (ud) ud.onclick = () => {
+    try { localStorage.removeItem('sr_discord_profile'); } catch (e) {}
+    listView();
   };
 
   const fk = document.getElementById('forgetkey');
@@ -1286,11 +1424,16 @@ function listView() {
   updateBackVisibility(); clearHash();
   const filterHeader = `<div class="filters" style="margin-bottom:14px">
     <select id="lfsel"><option value="all"${listFilter==='all'?' selected':''}>All types</option><option value="movie"${listFilter==='movie'?' selected':''}>Movies only</option><option value="tv"${listFilter==='tv'?' selected':''}>Series only</option></select>
-    <select id="lfsort"><option value="added"${listSort==='added'?' selected':''}>Date added</option><option value="alpha"${listSort==='alpha'?' selected':''}>Alphabetical</option></select>
+    <select id="lfsort"><option value="added"${listSort==='added'?' selected':''}>Date added</option><option value="alpha"${listSort==='alpha'?' selected':''}>Alphabetical</option><option value="rating"${listSort==='rating'?' selected':''}>Rating</option><option value="release"${listSort==='release'?' selected':''}>Release date</option></select>
+    <select id="lfstat"><option value="all"${listStatus==='all'?' selected':''}>All</option><option value="unwatched"${listStatus==='unwatched'?' selected':''}>Unwatched</option><option value="done"${listStatus==='done'?' selected':''}>Completed</option></select>
+    <button id="csvexp">⬇ CSV</button><button id="csvimp">⬆ Import CSV</button><input id="csvfile" type="file" accept=".csv,text/csv" hidden><span id="csvstat" class="meta"></span>
   </div>`;
 
   const filterList = l => {
     let out = l.filter(x => listFilter === 'all' || x.type === listFilter);
+    if (listStatus !== 'all') out = out.filter(x => isDone(x.type, x.id) === (listStatus === 'done'));
+    if (listSort === 'rating') out = [...out].sort((a, b) => (b.vote || 0) - (a.vote || 0));
+    else if (listSort === 'release') out = [...out].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     if (listSort === 'alpha') {
       out = [...out].sort((a,b) => (a.name || '').localeCompare(b.name || ''));
     }
@@ -1305,7 +1448,9 @@ function listView() {
   const favList = filterList(lsGet('fav').filter(x => !isBlocked(x.type, x.id)));
   const histList = filterList(lsGet('hist').filter(x => !isBlocked(x.type, x.id)));
 
-  const body = statsDashboard() + filterHeader + sec('Favorites', favList) + sec('History', histList, '<button id="clr">Clear history</button>')
+  const customLists = getLists();
+  const listsHtml = Object.keys(customLists).map(n => sec(esc(n), filterList((customLists[n] || []).filter(x => !isBlocked(x.type, x.id))), `<button class="dellist" data-n="${esc(n)}">Delete list</button>`)).join('');
+  const body = statsDashboard() + filterHeader + listsHtml + sec('Favorites', favList) + sec('History', histList, '<button id="clr">Clear history</button>')
     || statsDashboard() + filterHeader + emptyState('Your list is empty', 'Open a title and tap “♡ Add to my list” to keep it here.');
   app.innerHTML = body + backupBox();
   bindCards();
@@ -1313,6 +1458,25 @@ function listView() {
   
   const lfsel = document.getElementById('lfsel');
   if (lfsel) lfsel.onchange = ev => { listFilter = ev.target.value; listView(); };
+  document.querySelectorAll('.dellist').forEach(b => b.onclick = () => {
+    if (!confirm('Delete this list? Titles stay elsewhere in Screenroom.')) return;
+    const L = getLists(); delete L[b.dataset.n]; setLists(L); listView();
+  });
+  const csvfile = document.getElementById('csvfile'), csvimp = document.getElementById('csvimp');
+  if (csvimp) csvimp.onclick = () => csvfile.click();
+  if (csvfile) csvfile.onchange = () => { if (csvfile.files[0]) importCsv(csvfile.files[0]); };
+  const lfstat = document.getElementById('lfstat');
+  if (lfstat) lfstat.onchange = ev => { listStatus = ev.target.value; listView(); };
+  const csvexp = document.getElementById('csvexp');
+  if (csvexp) csvexp.onclick = () => {
+    const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+    const rows = [['tmdbID', 'Title', 'Year', 'Type', 'List', 'Watched']];
+    const add = (l, name) => l.forEach(x => rows.push([x.id, x.name, (x.date || '').slice(0, 4), x.type, name, isDone(x.type, x.id) ? 'yes' : 'no']));
+    add(lsGet('fav'), 'Favorites'); add(lsGet('hist'), 'History');
+    const blob = new Blob(['\ufeff' + rows.map(r => r.map(q).join(',')).join('\n')], { type: 'text/csv' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'screenroom-list.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+  };
   const lfsort = document.getElementById('lfsort');
   if (lfsort) lfsort.onchange = ev => { listSort = ev.target.value; listView(); };
 
@@ -1428,7 +1592,7 @@ async function watch(type, id, res = {}, fromBack = false) {
     const dur = mins ? (mins >= 60 ? Math.floor(mins / 60) + 'h' + (mins % 60 ? ' ' + (mins % 60) + 'm' : '') : mins + 'm') : '';
     const seasonsTxt = type === 'tv' && d.number_of_seasons ? ` · ${d.number_of_seasons} season${d.number_of_seasons > 1 ? 's' : ''}` : '';
     const s = res.s || 1, e = res.e || 1, t = res.t || 0;
-    current = { type, id, name, poster: d.poster_path, s, e, seasons: d.number_of_seasons };
+    current = { type, id, name, poster: d.poster_path, s, e, seasons: d.number_of_seasons, vote: d.vote_average || 0, date: d.release_date || d.first_air_date || '' };
     addHist(current);
     const amb = document.getElementById('amb');
     if (d.backdrop_path) { amb.style.backgroundImage = `url(${IMG}w300${d.backdrop_path})`; amb.classList.add('on'); } else amb.classList.remove('on');
@@ -1501,6 +1665,7 @@ async function watch(type, id, res = {}, fromBack = false) {
         </div>
         <div class="acts">
           <button id="fav" class="${isFav(type, id) ? 'on' : ''}">${isFav(type, id) ? '♥ In my list' : '♡ Add to my list'}</button>
+          <button id="addlist">＋ List</button>
           <button id="tramp">▶ Trailer</button>
           <button id="share">Share</button>
           <button id="theater">Theater mode</button>
@@ -1569,6 +1734,16 @@ async function watch(type, id, res = {}, fromBack = false) {
     loadCast(type, id);
     loadCollection(d);
     loadSimilar(type, id);
+    document.getElementById('addlist').onclick = ev => {
+      const btn = ev.currentTarget, L = getLists(), names = Object.keys(L);
+      const n = (prompt('Add to / remove from which list?' + (names.length ? '\nYour lists: ' + names.join(', ') : '') + '\nType a name (a new name creates a list):') || '').trim().slice(0, 30);
+      if (!n) return;
+      const arr = L[n] || [], has = arr.some(x => same(x, current.type, current.id));
+      L[n] = has ? arr.filter(x => !same(x, current.type, current.id)) : [{ type: current.type, id: current.id, name: current.name, poster: current.poster, vote: current.vote || 0, date: current.date || '', added: Date.now() }, ...arr];
+      setLists(L);
+      btn.textContent = has ? '✓ Removed' : '✓ Added';
+      setTimeout(() => { btn.textContent = '＋ List'; }, 1800);
+    };
     document.getElementById('fav').onclick = ev => {
       const on = toggleFav(current);
       ev.target.classList.toggle('on', on);
@@ -1716,7 +1891,7 @@ async function loadEpisodes(d) {
   let showS = current.s;
   const en = document.getElementById('epnow'); if (en) en.textContent = `Now playing: S${current.s} E${current.e}`;
   box.innerHTML = '<div class="hd"><h2 class="sec">Seasons</h2></div><div class="seasons">' + seasons.map(x => `<div class="scard" tabindex="0" data-s="${x.season_number}"><span class="cbadge">Current</span>${x.poster_path ? `<img loading="lazy" decoding="async" src="${IMG}w342${x.poster_path}" alt="">` : '<div class="noimg"></div>'}<div class="sinfo"><b>${esc(x.name)}</b><span>${esc((x.air_date || '').slice(0, 4))}</span><span>${x.episode_count} episodes</span></div></div>`).join('') +
-    '</div><div class="hd"><h2 class="sec" id="eptitle"></h2><div><button id="markall" style="margin-right:8px">✓ Mark season watched</button><button id="epToggle"></button></div></div><div id="eplist"></div>';
+    '</div><div class="hd"><h2 class="sec" id="eptitle"></h2><div><button id="markall" style="margin-right:8px">✓ Mark season watched</button><button id="resetprog" style="margin-right:8px">↺ Reset progress</button><button id="epToggle"></button></div></div><div id="eplist"></div>';
   const alive = () => document.getElementById('eps') && current && String(current.id) === String(id);
   const play = (s, e) => { playEpisode(s, e); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const mark = () => {
@@ -1733,6 +1908,7 @@ async function loadEpisodes(d) {
     try { sd = await api(`/tv/${id}/season/${showS}`); } catch (e) { sd = { episodes: [] }; }
     if (!alive()) return;
     const eps = sd.episodes || [];
+    const ovHtml = sd.overview ? `<details class="sov"><summary>Season overview</summary><p dir="auto">${esc(sd.overview)}</p></details>` : '';
     if (!eps.length) { list.innerHTML = '<p class="msg">No episodes found for this season.</p>'; return; }
     
     document.getElementById('markall').onclick = () => {
@@ -1742,14 +1918,14 @@ async function loadEpisodes(d) {
     };
 
     if (epView === 'drop') {
-      list.innerHTML = `<p class="meta">Select an episode</p><select id="epSel"><option value="">Choose an episode</option>${eps.map(x => `<option value="${x.episode_number}"${current.s === showS && current.e === x.episode_number ? ' selected' : ''}>${x.episode_number}. ${esc(x.name)}</option>`).join('')}</select>`;
+      list.innerHTML = ovHtml + `<p class="meta">Select an episode</p><select id="epSel"><option value="">Choose an episode</option>${eps.map(x => `<option value="${x.episode_number}"${current.s === showS && current.e === x.episode_number ? ' selected' : ''}>${x.episode_number}. ${esc(x.name)}</option>`).join('')}</select>`;
       document.getElementById('epSel').onchange = ev => { if (ev.target.value) play(showS, +ev.target.value); };
       return;
     }
     const todayStr = new Date().toISOString().slice(0, 10);
     const todayDate = new Date(todayStr);
 
-    list.innerHTML = '<div class="eplist">' + eps.map(x => {
+    list.innerHTML = ovHtml + '<div class="eplist">' + eps.map(x => {
       const aired = x.air_date && x.air_date <= todayStr;
       let badgeText = 'Aired';
       let badgeClass = 'ok';
@@ -1788,6 +1964,14 @@ async function loadEpisodes(d) {
     });
   };
   box.querySelectorAll('.scard').forEach(c => { c.onclick = () => { showS = +c.dataset.s; drawList(); }; });
+  document.getElementById('resetprog').onclick = () => {
+    if (!confirm('Reset all watch progress for this series? It stays in your list.')) return;
+    const w = getW(); delete w[id];
+    try { localStorage.setItem('watched', JSON.stringify(w)); } catch (e) {}
+    setCW(getCW().filter(x => String(x.id) !== String(id)));
+    markDone('tv', id, false);
+    drawList();
+  };
   document.getElementById('epToggle').onclick = () => {
     epView = epView === 'grid' ? 'drop' : 'grid';
     try { localStorage.setItem('epview', epView); } catch (e) {}
@@ -1815,7 +1999,7 @@ async function nextUp() {
   try {
     const sd = await api(`/tv/${current.id}/season/${current.s}`);
     let s = current.s, e = current.e + 1;
-    if (e > sd.episodes.length) { s++; e = 1; if (current.seasons && s > current.seasons) return; }
+    if (e > sd.episodes.length) { s++; e = 1; if (current.seasons && s > current.seasons) { markDone('tv', current.id); return; } }
     showNext(s, e);
   } catch (err) {}
 }
@@ -1838,6 +2022,9 @@ function showNext(s, e) {
 }
 
 const PATCHNOTES = [
+  { v: '33', c: ['Custom lists: tap ＋ List on any title to add it to a list you name (Weekend Binge, Anime…); your lists show in My list. Import a Letterboxd / IMDb / Screenroom CSV from My list (button or drag and drop, first 200 rows). Series pages now show an expandable season overview above the episodes.'] },
+  { v: '32', c: ['My list: filter by All / Unwatched / Completed, sort by rating or release date (for titles added from now on), and export your list as CSV (Letterboxd-compatible). Series pages: new Reset progress button.'] },
+  { v: '31', c: ['Fixed Watch Party chat not sending/receiving (chat state was lost when a party started), added auto-reconnect for guests and host, chat history for people who join late, resync when you come back to the app, and extra relay servers for mobile networks.'] },
   { v: '30', c: ['Added Discord Login option ("Connect with Discord") to sign in instantly with Discord username and avatar without needing to manually find a TMDB key. Enhanced Watch Party streaming & synchronization with manual timestamp sync controls (MM:SS) to bypass iframe embedding restrictions, plus robust P2P chat and auto-reconnection.'] },
   { v: '29', c: ['Added serverless P2P Watch Party rooms (WebRTC) with one-click Discord invite links that sync episodes and timestamps, plus a low-latency live party chat (available in both normal and Theater mode) with custom username & profile picture saved per TMDB key.'] },
   { v: '28', c: ['Retained all v27 features, multi-source audio/subtitle streaming options (Vidy.st, Multiembed, Vidsrc), Demo Mode, Admin Panel, and quote splashes in a clean release build.'] },
@@ -1987,12 +2174,18 @@ async function handleDiscordAuth() {
         if (res.ok) {
           const user = await res.json();
           const username = user.global_name || user.username || 'Discord User';
-          const avatarUrl = user.avatar 
-            ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=128` 
-            : DEFAULT_AVATAR;
+          const defaultIdx = user.discriminator && user.discriminator !== '0'
+            ? (Number(user.discriminator) % 5)
+            : Number((BigInt(user.id || '0') >> 22n) % 6n);
+          const avatarUrl = user.avatar
+            ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=128`
+            : `https://cdn.discordapp.com/embed/avatars/${defaultIdx}.png`;
+          try { localStorage.setItem('sr_discord_profile', JSON.stringify({ id: user.id, name: username, pfp: avatarUrl })); } catch (e) {}
+          if (!key) {
+            key = '5d0979bf39cd11dbb4d24177b8b4b76c';
+            try { localStorage.setItem('tmdb_key', key); } catch (e) {}
+          }
           saveUserProfile(username, avatarUrl);
-          key = '5d0979bf39cd11dbb4d24177b8b4b76c';
-          try { localStorage.setItem('tmdb_key', key); } catch (e) {}
         }
       } catch (e) {}
       history.replaceState(null, '', location.pathname + location.search);
