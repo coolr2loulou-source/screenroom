@@ -24,7 +24,7 @@ body.light{--bg:#f4f6f9;--surface:#ffffff;--line:#d0d7de;--text:#1f2328;--muted:
 html,body{max-width:100%;overflow-x:hidden}
 body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;transition:background .3s,color .3s}
 
-header{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;padding:calc(12px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 10px max(16px,env(safe-area-inset-left));border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(20,25,34,0.75);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);z-index:10}
+header{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;padding:calc(12px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 10px max(16px,env(safe-area-inset-left));border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg,#141922);z-index:10;-webkit-transform:translateZ(0);transform:translateZ(0)}
 body.light header{background:rgba(244,246,249,0.85)}
 
 .logo{font:700 22px Georgia,serif;cursor:pointer;white-space:nowrap;flex-shrink:0}
@@ -99,14 +99,14 @@ h2.sec{margin:0 0 12px;font-size:21px}
 .setup input{width:100%;padding:12px;margin:14px 0;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--text)}
 
 @media (max-width:600px){
-  header{flex-wrap:nowrap;gap:8px;padding:calc(8px + env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) 8px max(12px,env(safe-area-inset-left))}
+  header{flex-wrap:nowrap;gap:8px;padding:calc(max(env(safe-area-inset-top), 50px) + 6px) max(12px,env(safe-area-inset-right)) 8px max(12px,env(safe-area-inset-left))}
   .logo{font-size:18px}
   #back{padding:7px 10px;font-size:15px}
   .search-wrap{flex:1 1 auto;min-width:0}
   #q{padding:8px 12px;font-size:16px}
   #hdr-dice{padding:6px 10px;font-size:16px}
-  nav{position:fixed;left:0;right:0;bottom:0;z-index:40;order:0;width:100%;gap:0;background:rgba(20,25,34,.97);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
-  body.light nav{background:rgba(244,246,249,.97)}
+  nav{position:fixed;left:0;right:0;bottom:0;z-index:40;order:0;width:100%;gap:0;background:var(--bg,#141922);border-top:1px solid var(--line);-webkit-transform:translateZ(0);transform:translateZ(0);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+  body.light nav{background:#f4f6f9}
   nav button{flex:1;border:0;border-radius:10px;padding:9px 2px;font-size:12px;color:var(--muted);white-space:nowrap}
   nav button.on{background:transparent;color:var(--accent);font-weight:700}
   main{padding:14px max(12px,env(safe-area-inset-right)) calc(86px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
@@ -152,7 +152,7 @@ body.theater nav{display:none}
 
 .badge-tag{background:rgba(255,122,69,0.15);color:var(--accent);border:1px solid var(--accent);border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700;display:inline-block;margin-right:8px}
 
-.stats-box{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:20px}
+.stats-box{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:20px}
 .stat-item{text-align:center}
 .stat-num{font-size:22px;font-weight:700;color:var(--accent)}
 .stat-lbl{font-size:11px;color:var(--muted)}
@@ -214,6 +214,11 @@ body.theater nav{display:none}
 #amb.on{opacity:var(--bg-opacity)}
 
 .sov{margin:0 0 12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px}.sov summary{cursor:pointer;font-weight:600}.sov p{margin:8px 0 0;color:var(--muted);font-size:14px;line-height:1.5}
+.zoomb{position:absolute;right:6px;bottom:6px;width:32px;height:32px;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:16px;padding:0;cursor:pointer;z-index:2}
+#lightbox{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.94);display:flex;align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top)) 12px max(16px,env(safe-area-inset-bottom))}
+#lightbox img{max-width:100%;max-height:100%;border-radius:10px}
+.pfbar{display:flex;gap:8px;margin:0 0 14px}.pfbar button.on{background:var(--accent);color:#141922;border-color:var(--accent);font-weight:700}
+.studios{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.studios img{height:26px;max-width:92px;object-fit:contain;background:#fff;border-radius:6px;padding:3px 7px}
 .party-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:12px}
 .party-bar.active{border-color:var(--accent);box-shadow:0 0 12px rgba(255,122,69,0.2)}
 .party-badge{background:var(--accent);color:#141922;font-weight:700;font-size:12px;padding:2px 8px;border-radius:999px}
@@ -281,7 +286,7 @@ body.theater #next{position:fixed;left:50%;transform:translateX(-50%);bottom:cal
 <p class="attr">This product uses the TMDB API but is not endorsed or certified by TMDB. <span id="contact"></span></p>
 
 <script>
-const APP_VERSION = '33';
+const APP_VERSION = '38';
 const IMG = 'https://image.tmdb.org/t/p/';
 const app = document.getElementById('app');
 const q = document.getElementById('q');
@@ -292,6 +297,24 @@ let key = '', tab = 'all', current = null, lastSave = 0, filt = { genre: '', yea
 let playerProv = 'vidyst';
 let listFilter = 'all', listSort = 'added', listStatus = 'all';
 const isDone = (type, id) => lsGet('done').includes(type + '/' + id);
+let personFilter = 'all';
+const getNS = () => { const v = localStorage.getItem('nextsecs'); return v === null || isNaN(+v) ? 8 : +v; };
+const nsecsHtml = () => '<select id="nsecs" aria-label="Autoplay next episode">' + [[0, 'Autoplay off'], [5, 'Next in 5s'], [8, 'Next in 8s'], [10, 'Next in 10s'], [15, 'Next in 15s']].map(([v, l]) => `<option value="${v}"${getNS() === v ? ' selected' : ''}>${l}</option>`).join('') + '</select>';
+const getProvMap = () => { try { const o = JSON.parse(localStorage.getItem('provmap') || '{}'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } };
+if ('serviceWorker' in navigator) window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+const wt = { k: '', t: 0, acc: 0 };
+const getWT = () => { try { const o = JSON.parse(localStorage.getItem('wtime') || '{}'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } };
+function flushWT(type) {
+  if (!wt.acc) return;
+  const o = getWT(); o[type] = (o[type] || 0) + wt.acc; wt.acc = 0;
+  try { localStorage.setItem('wtime', JSON.stringify(o)); } catch (e) {}
+}
+function showStill(src) {
+  const o = document.createElement('div'); o.id = 'lightbox';
+  o.innerHTML = `<img src="${src}" alt="">`;
+  o.onclick = () => o.remove();
+  document.body.appendChild(o);
+}
 const getLists = () => { try { const o = JSON.parse(localStorage.getItem('lists') || '{}'); return o && typeof o === 'object' && !Array.isArray(o) ? o : {}; } catch (e) { return {}; } };
 const setLists = o => { try { localStorage.setItem('lists', JSON.stringify(o)); } catch (e) {} };
 async function importCsv(file) {
@@ -738,7 +761,7 @@ function updatePartyUI() {
       } else {
         secs = +val || 0;
       }
-      party.lastTime = secs;
+      party.lastTime = secs; party.lastTimeAt = Date.now();
       broadcastPartyState(true);
       ev.target.textContent = '⚡ Synced!';
       setTimeout(() => { if (ev.target) ev.target.textContent = '⚡ Sync Time'; }, 1500);
@@ -925,10 +948,15 @@ function applyHostSync(msg) {
     if (epRedraw) epRedraw();
     return;
   }
-  // Drift correction (> 4s drift or forced sync)
-  const drift = Math.abs((party.lastTime || 0) - targetTime);
-  if (msg.force || drift > 4) {
-    party.lastTime = targetTime;
+  // Drift correction: never touch the player while the host is paused, and reload at most once per 30s
+  if (msg.state !== 'playing' && !msg.force) return;
+  const now = Date.now(), drift = Math.abs((party.lastTime || 0) - targetTime);
+  const fresh = party.lastTimeAt && now - party.lastTimeAt < 8000;
+  const first = !party.synced;
+  party.synced = true;
+  if (now - (party.lastCorrect || 0) < 30000) return;
+  if (((first || msg.force) && drift > 4) || (fresh && drift > 15)) {
+    party.lastTime = targetTime; party.lastTimeAt = 0; party.lastCorrect = now;
     const f = document.getElementById('frame');
     if (f) f.src = getEmbedUrl(playerProv, current.type, current.id, current.s, current.e, targetTime);
   }
@@ -948,7 +976,13 @@ window.addEventListener('message', ev => {
   if (typeof p === 'string') { try { p = JSON.parse(p); } catch (e) { return; } }
   if (!p || !p.event) return;
   const now = Date.now();
-  if (typeof p.currentTime === 'number') party.lastTime = p.currentTime;
+  if (typeof p.currentTime === 'number') { party.lastTime = p.currentTime; party.lastTimeAt = Date.now(); }
+  if (p.event === 'timeupdate' && typeof p.currentTime === 'number' && current) {
+    const k = current.type + '/' + current.id + '/' + current.s + '/' + current.e;
+    if (wt.k === k && p.currentTime > wt.t && p.currentTime - wt.t <= 15) { wt.acc += p.currentTime - wt.t; if (wt.acc >= 10) flushWT(current.type); }
+    wt.k = k; wt.t = p.currentTime;
+  }
+  if ((p.event === 'pause' || p.event === 'ended') && current) flushWT(current.type);
   if (p.event === 'play') {
     party.lastState = 'playing';
     if (party.active && party.role === 'host') broadcastPartyState(true);
@@ -1064,7 +1098,8 @@ async function homeView() {
   const paths = ['/trending/all/day', '/trending/all/week', '/movie/now_playing', '/tv/popular', '/movie/popular', '/movie/top_rated', '/tv/top_rated'];
   const rs = await Promise.allSettled(paths.map(x => api(x)));
   if (rs.every(r => r.status === 'rejected')) throw rs[0].reason;
-  const L = (i, t) => (rs[i].status === 'fulfilled' ? rs[i].value.results : []).filter(x => x.poster_path).map(x => ({ ...x, media_type: x.media_type || t }));
+  const hw = localStorage.getItem('hidew') === '1';
+  const L = (i, t) => (rs[i].status === 'fulfilled' ? rs[i].value.results : []).filter(x => x.poster_path && !(hw && isDone(x.media_type || t || 'movie', x.id))).map(x => ({ ...x, media_type: x.media_type || t }));
   const day = L(0), week = L(1), now = L(2, 'movie'), ps = L(3, 'tv'), pm = L(4, 'movie'), tm = L(5, 'movie'), ts = L(6, 'tv');
   const pool = day.filter(x => x.backdrop_path).slice(0, 6);
   const hero = pool[Math.floor(Math.random() * pool.length)];
@@ -1192,12 +1227,12 @@ function statsDashboard() {
   const cw = getCW();
   const fav = lsGet('fav');
   const hist = lsGet('hist');
-  const totalSecs = cw.reduce((sum, item) => sum + (item.time || 0), 0);
-  const totalHours = (totalSecs / 3600).toFixed(1);
+  const w = getWT(), hrs = v => ((v || 0) / 3600).toFixed(1);
   return `<div class="stats-box">
     <div class="stat-item"><div class="stat-num">${fav.length}</div><div class="stat-lbl">Saved Titles</div></div>
     <div class="stat-item"><div class="stat-num">${hist.length}</div><div class="stat-lbl">History Count</div></div>
-    <div class="stat-item"><div class="stat-num">${totalHours}h</div><div class="stat-lbl">Time Streamed</div></div>
+    <div class="stat-item"><div class="stat-num">${hrs(w.movie)}h</div><div class="stat-lbl">Movies watched</div></div>
+    <div class="stat-item"><div class="stat-num">${hrs(w.tv)}h</div><div class="stat-lbl">Series watched</div></div>
   </div>`;
 }
 
@@ -1426,7 +1461,7 @@ function listView() {
     <select id="lfsel"><option value="all"${listFilter==='all'?' selected':''}>All types</option><option value="movie"${listFilter==='movie'?' selected':''}>Movies only</option><option value="tv"${listFilter==='tv'?' selected':''}>Series only</option></select>
     <select id="lfsort"><option value="added"${listSort==='added'?' selected':''}>Date added</option><option value="alpha"${listSort==='alpha'?' selected':''}>Alphabetical</option><option value="rating"${listSort==='rating'?' selected':''}>Rating</option><option value="release"${listSort==='release'?' selected':''}>Release date</option></select>
     <select id="lfstat"><option value="all"${listStatus==='all'?' selected':''}>All</option><option value="unwatched"${listStatus==='unwatched'?' selected':''}>Unwatched</option><option value="done"${listStatus==='done'?' selected':''}>Completed</option></select>
-    <button id="csvexp">⬇ CSV</button><button id="csvimp">⬆ Import CSV</button><input id="csvfile" type="file" accept=".csv,text/csv" hidden><span id="csvstat" class="meta"></span>
+    <button id="csvexp">⬇ CSV</button><button id="csvimp">⬆ Import CSV</button><button id="hidew">${localStorage.getItem('hidew') === '1' ? '🙈 Hiding watched on Home' : '👁 Show watched on Home'}</button><input id="csvfile" type="file" accept=".csv,text/csv" hidden><span id="csvstat" class="meta"></span>
   </div>`;
 
   const filterList = l => {
@@ -1462,6 +1497,8 @@ function listView() {
     if (!confirm('Delete this list? Titles stay elsewhere in Screenroom.')) return;
     const L = getLists(); delete L[b.dataset.n]; setLists(L); listView();
   });
+  const hidew = document.getElementById('hidew');
+  if (hidew) hidew.onclick = () => { try { localStorage.setItem('hidew', localStorage.getItem('hidew') === '1' ? '0' : '1'); } catch (e) {} listView(); };
   const csvfile = document.getElementById('csvfile'), csvimp = document.getElementById('csvimp');
   if (csvimp) csvimp.onclick = () => csvfile.click();
   if (csvfile) csvfile.onchange = () => { if (csvfile.files[0]) importCsv(csvfile.files[0]); };
@@ -1591,6 +1628,7 @@ async function watch(type, id, res = {}, fromBack = false) {
     const mins = type === 'movie' ? d.runtime : (d.episode_run_time && d.episode_run_time[0]);
     const dur = mins ? (mins >= 60 ? Math.floor(mins / 60) + 'h' + (mins % 60 ? ' ' + (mins % 60) + 'm' : '') : mins + 'm') : '';
     const seasonsTxt = type === 'tv' && d.number_of_seasons ? ` · ${d.number_of_seasons} season${d.number_of_seasons > 1 ? 's' : ''}` : '';
+    { const pm = getProvMap()[type + '/' + id]; if (pm && !party.active && ['vidyst', 'multiembed', 'vidsrc'].includes(pm)) playerProv = pm; }
     const s = res.s || 1, e = res.e || 1, t = res.t || 0;
     current = { type, id, name, poster: d.poster_path, s, e, seasons: d.number_of_seasons, vote: d.vote_average || 0, date: d.release_date || d.first_air_date || '' };
     addHist(current);
@@ -1648,18 +1686,20 @@ async function watch(type, id, res = {}, fromBack = false) {
         <button id="customposterbtn" title="Override poster image">🖼 Custom Poster</button>
       </div>
       <div class="player"><iframe id="frame" allowfullscreen
-        allow="encrypted-media; autoplay *; fullscreen *"
+        allow="encrypted-media; autoplay *; fullscreen *; picture-in-picture *"
         src="${getEmbedUrl(playerProv, type, id, s, e, t)}"></iframe></div>
       <div id="party-chat" class="party-chat" style="display:none"></div>
       <div class="icol">
         <div id="next"></div>
         <h2 dir="auto">${esc(name)}</h2>
+        ${(d.original_title || d.original_name) && (d.original_title || d.original_name) !== name ? `<p class="meta" dir="auto">${esc(d.original_title || d.original_name)}</p>` : ''}
         <p class="meta">
           ${cert ? `<span class="badge-tag">${esc(cert)}</span>` : ''}
           ${type === 'tv' ? 'Series' : 'Movie'}${year ? ' · ' + year : ''}${dur ? ' · ' + dur : ''}${seasonsTxt}${d.vote_average ? ' · ★ ' + d.vote_average.toFixed(1) : ''}
         </p>
         ${directorOrCreator ? `<p class="meta"><b>${type === 'movie' ? 'Director' : 'Creator'}:</b> <span id="dir-link" style="color:var(--accent);cursor:pointer;text-decoration:underline">${esc(directorOrCreator)}</span></p>` : ''}
         ${financialTxt ? `<p class="meta">${esc(financialTxt)}</p>` : ''}
+        ${(() => { const src = (type === 'tv' ? d.networks : d.production_companies) || []; const l = src.filter(x => x.logo_path).slice(0, 4); return l.length ? `<div class="studios">${l.map(x => `<img loading="lazy" src="${IMG}w185${x.logo_path}" alt="${esc(x.name)}" title="${esc(x.name)}">`).join('')}</div>` : ''; })()}
         <div class="chips">
           ${(d.genres || []).map(g => `<span class="chip" data-gid="${g.id}">${esc(g.name)}</span>`).join('')}
         </div>
@@ -1673,7 +1713,7 @@ async function watch(type, id, res = {}, fromBack = false) {
           <a href="${rtLink}" target="_blank" rel="noopener"><button>Rotten Tomatoes ↗</button></a>
           <a href="${tmdbLink}" target="_blank" rel="noopener"><button>TMDB ↗</button></a>
         </div>
-        ${type === 'tv' ? '<div class="ep"><span id="epnow" class="meta"></span><button id="nextep">Next ▶</button></div>' : ''}
+        ${type === 'tv' ? '<div class="ep"><span id="epnow" class="meta"></span><button id="nextep">Next ▶</button>' + nsecsHtml() + '</div>' : ''}
         <p dir="auto">${esc(d.overview)}</p>
         
         <div id="castsec"></div>
@@ -1686,9 +1726,25 @@ async function watch(type, id, res = {}, fromBack = false) {
     }
 
     updatePartyUI();
+    const nsel = document.getElementById('nsecs');
+    if (nsel) nsel.onchange = () => { try { localStorage.setItem('nextsecs', nsel.value); } catch (e) {} };
+    if (!res.s && !res.t && !party.active) {
+      const rc = getCW().find(x => x.type === type && String(x.id) === String(id) && x.time > 10);
+      const nb = document.getElementById('next');
+      if (rc && nb) {
+        const mm = Math.floor(rc.time / 60), ss = String(rc.time % 60).padStart(2, '0');
+        nb.innerHTML = `<div class="nextup"><span>Resume${type === 'tv' ? ` S${rc.s} E${rc.e}` : ''} at ${mm}:${ss}?</span><button id="rsy">Resume</button><button id="rsn">Start over</button></div>`;
+        document.getElementById('rsn').onclick = () => { nb.innerHTML = ''; };
+        document.getElementById('rsy').onclick = () => {
+          nb.innerHTML = '';
+          if (type === 'tv') { current.s = rc.s; current.e = rc.e; const en = document.getElementById('epnow'); if (en) en.textContent = `Now playing: S${rc.s} E${rc.e}`; if (epRedraw) epRedraw(); }
+          document.getElementById('frame').src = getEmbedUrl(playerProv, type, id, type === 'tv' ? rc.s : 1, type === 'tv' ? rc.e : 1, rc.time);
+        };
+      }
+    }
     document.getElementById('provsel').onchange = ev => {
       playerProv = ev.target.value;
-      try { localStorage.setItem('player_prov', playerProv); } catch (e) {}
+      try { localStorage.setItem('player_prov', playerProv); const pm = getProvMap(); pm[current.type + '/' + current.id] = playerProv; localStorage.setItem('provmap', JSON.stringify(pm)); } catch (e) {}
       document.getElementById('frame').src = getEmbedUrl(playerProv, current.type, current.id, current.s, current.e, 0);
       if (party.active && party.role === 'host') broadcastPartyState(true);
     };
@@ -1790,6 +1846,7 @@ async function loadCast(type, id) {
 }
 
 async function loadPersonCredits(pid, fromBack = false) {
+  if (!fromBack) personFilter = 'all';
   if (!fromBack && !(activeView.kind === 'person' && String(activeView.pid) === String(pid))) {
     pushHistoryState();
   }
@@ -1801,7 +1858,9 @@ async function loadPersonCredits(pid, fromBack = false) {
   try {
     const [pinfo, creds] = await Promise.all([api(`/person/${pid}`), api(`/person/${pid}/combined_credits`)]);
     const items = (creds.cast || []).filter(i => i.poster_path).sort((a,b) => (b.popularity || 0) - (a.popularity || 0));
-    render(items, `Films and shows with ${pinfo.name}`, false);
+    render(personFilter === 'all' ? items : items.filter(i => i.media_type === personFilter), `Films and shows with ${pinfo.name}`, false);
+    app.insertAdjacentHTML('afterbegin', `<div class="pfbar">${[['all', 'All'], ['movie', 'Movies'], ['tv', 'TV Shows']].map(([f, l]) => `<button data-f="${f}" class="${personFilter === f ? 'on' : ''}">${l}</button>`).join('')}</div>`);
+    app.querySelectorAll('.pfbar button').forEach(b => b.onclick = () => { personFilter = b.dataset.f; loadPersonCredits(pid, true); });
   } catch (e) { app.innerHTML = `<p class="msg">${esc(e.message)}</p>`; }
 }
 
@@ -1940,7 +1999,7 @@ async function loadEpisodes(d) {
 
       const w = isW(id, showS, x.episode_number), ov = x.overview || '';
       return `<article class="epc${current.s === showS && current.e === x.episode_number ? ' cur' : ''}${aired ? '' : ' soon'}" data-e="${x.episode_number}">
-        <div class="still">${x.still_path ? `<img loading="lazy" decoding="async" src="${IMG}w300${x.still_path}" alt="">` : ''}<span class="bdg ${badgeClass}">${badgeText}</span></div>
+        <div class="still">${x.still_path ? `<img loading="lazy" decoding="async" src="${IMG}w300${x.still_path}" alt="">` : ''}<span class="bdg ${badgeClass}">${badgeText}</span>${x.still_path ? `<button class="zoomb" aria-label="Zoom image" data-src="${IMG}w780${x.still_path}">⤢</button>` : ''}</div>
         <div class="eb"><h3 dir="auto">${x.episode_number}. ${esc(x.name)}</h3><p class="meta">${esc(x.air_date || 'TBA')}${x.runtime ? ' · ' + x.runtime + ' min' : ''}</p>
         <p class="ov" dir="auto">${esc(ov)}</p>${ov.length > 110 ? '<button class="more">See more</button>' : ''}
         <div class="ea"><button class="wbtn${w ? ' on' : ''}" aria-label="Mark as watched">✓</button></div></div></article>`;
@@ -1948,6 +2007,8 @@ async function loadEpisodes(d) {
     list.querySelectorAll('.epc').forEach(c => {
       const n = +c.dataset.e;
       c.onclick = ev => { if (ev.target.closest('.more, .wbtn') || c.classList.contains('soon')) return; play(showS, n); };
+      const zb = c.querySelector('.zoomb');
+      if (zb) zb.onclick = ev => { ev.stopPropagation(); showStill(zb.dataset.src); };
       c.querySelector('.wbtn').onclick = ev => {
         ev.stopPropagation();
         const on = !ev.currentTarget.classList.contains('on');
@@ -2006,14 +2067,15 @@ async function nextUp() {
 
 function showNext(s, e) {
   const box = document.getElementById('next'); if (!box) return;
-  let n = 8;
+  let n = getNS();
   clearInterval(nextTimer);
   const paint = () => {
-    box.innerHTML = `<div class="nextup"><span>Next up: S${s} E${e}. Playing in ${n}s</span><button id="nplay">Play now</button><button id="ncancel">Cancel</button></div>`;
+    box.innerHTML = `<div class="nextup"><span>Next up: S${s} E${e}${n > 0 ? '. Playing in ' + n + 's' : ''}</span><button id="nplay">Play now</button><button id="ncancel">Cancel</button></div>`;
     document.getElementById('nplay').onclick = () => playEpisode(s, e);
     document.getElementById('ncancel').onclick = () => { clearInterval(nextTimer); box.innerHTML = ''; };
   };
   paint();
+  if (n <= 0) return;
   nextTimer = setInterval(() => {
     if (!current || !document.getElementById('next')) return clearInterval(nextTimer);
     if (--n <= 0) return playEpisode(s, e);
@@ -2022,6 +2084,11 @@ function showNext(s, e) {
 }
 
 const PATCHNOTES = [
+  { v: '38', c: ['Resume prompt when you reopen a title you were watching. Choose the next-episode countdown (5/8/10/15s or off) under the player. Each title remembers the player source you picked. Offline mode: the app shell now opens without internet after one online visit (needs sw.js). Player allows its own Picture-in-Picture button.'] },
+  { v: '37', c: ['Real watch-time stats (hours of movies and series) in My list. Network / studio logos on title pages. New button in My list to hide completed titles from the Home rows.'] },
+  { v: '36', c: ['Actor pages: filter All / Movies / TV Shows. Episode thumbnails: tap the ⤢ button to zoom the image. Title pages: the original-language title is shown under the translated one.'] },
+  { v: '35', c: ['iPhone: added a clear space at the very top (clock / battery area) so the logo, search bar and icons sit below the iOS blur and stay sharp.'] },
+  { v: '34', c: ['iPhone: fixed the search bar and icons flickering, vanishing or going blurry (header and bottom bar are now solid). Watch Party: the guest player no longer restarts again and again — it only re-syncs when you are more than 15s apart, at most once every 30s, and never while the host is paused.'] },
   { v: '33', c: ['Custom lists: tap ＋ List on any title to add it to a list you name (Weekend Binge, Anime…); your lists show in My list. Import a Letterboxd / IMDb / Screenroom CSV from My list (button or drag and drop, first 200 rows). Series pages now show an expandable season overview above the episodes.'] },
   { v: '32', c: ['My list: filter by All / Unwatched / Completed, sort by rating or release date (for titles added from now on), and export your list as CSV (Letterboxd-compatible). Series pages: new Reset progress button.'] },
   { v: '31', c: ['Fixed Watch Party chat not sending/receiving (chat state was lost when a party started), added auto-reconnect for guests and host, chat history for people who join late, resync when you come back to the app, and extra relay servers for mobile networks.'] },
