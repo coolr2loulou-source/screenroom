@@ -24,7 +24,7 @@ body.light{--bg:#f4f6f9;--surface:#ffffff;--line:#d0d7de;--text:#1f2328;--muted:
 html,body{max-width:100%;overflow-x:hidden}
 body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;transition:background .3s,color .3s}
 
-header{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;padding:calc(12px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 10px max(16px,env(safe-area-inset-left));border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg,#141922);z-index:10;-webkit-transform:translateZ(0);transform:translateZ(0)}
+header{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;padding:calc(12px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 10px max(16px,env(safe-area-inset-left));border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg,#141922);z-index:10}
 body.light header{background:rgba(244,246,249,0.85)}
 
 .logo{font:700 22px Georgia,serif;cursor:pointer;white-space:nowrap;flex-shrink:0}
@@ -294,7 +294,7 @@ body.theater #next{position:fixed;left:50%;transform:translateX(-50%);bottom:cal
 <p class="attr">This product uses the TMDB API but is not endorsed or certified by TMDB. <span id="contact"></span></p>
 
 <script>
-const APP_VERSION = '53';
+const APP_VERSION = '55';
 const IMG = 'https://image.tmdb.org/t/p/';
 const app = document.getElementById('app');
 const q = document.getElementById('q');
@@ -431,7 +431,7 @@ async function loadProviders(type, id) {
     el.innerHTML = h ? `<div class="meta">Where to watch (${used})</div>${h}` : '';
   } catch (e) {}
 }
-const GAMES_LB = [['snake', '🐍 Snake'], ['pacman', '🟡 Pac-Man'], ['fnf', '🎤 Rhythm']];
+const GAMES_LB = [['snake', '🐍 Snake'], ['pacman', '🟡 Pac-Man'], ['fnf', '🎤 Rhythm'], ['g2048', '🔢 2048'], ['memory', '🧠 Memory']];
 const getLB = () => { try { const o = JSON.parse(localStorage.getItem('lb') || '{}'); return o && typeof o === 'object' && !Array.isArray(o) ? o : {}; } catch (e) { return {}; } };
 function mergeLB(name, scores) {
   if (!name || !scores || typeof scores !== 'object') return;
@@ -453,6 +453,24 @@ function renderBoard(g) {
 }
 function handleGameMsg(m) {
   if (m.op === 'react') { showReact(m.emoji); return; }
+  if (m.op === 'readyq') {
+    if (party.role !== 'guest') return;
+    const old = document.getElementById('gtoast'); if (old) old.remove();
+    const t = document.createElement('div'); t.id = 'gtoast';
+    t.innerHTML = '<span>The host asks: ready to start?</span><button id="gready">✅ I’m ready</button>';
+    document.body.appendChild(t);
+    document.getElementById('gready').onclick = () => { sendGame({ op: 'ready', id: Math.random().toString(36).slice(2, 7) }); t.innerHTML = '<span>Waiting for the others…</span>'; setTimeout(() => t.remove(), 15000); };
+    setTimeout(() => t.remove(), 40000);
+    return;
+  }
+  if (m.op === 'ready') {
+    if (party.role !== 'host') return;
+    party.ready = party.ready || {}; party.ready[m.id || Math.random()] = 1;
+    const n = Object.keys(party.ready).length, tot = party.conns.filter(c => c.open).length, b = document.getElementById('readyall');
+    if (b) b.textContent = `✅ Ready ${n}/${tot}`;
+    if (n >= tot) { party.ready = {}; if (b) b.textContent = '✅ Everyone ready?'; const sb = document.getElementById('startall'); if (sb) sb.click(); }
+    return;
+  }
   if (m.op === 'rematch' && G && G.sid === m.sid) {
     G.rm = G.rm || {}; G.rm.opp = true;
     if (G.rm.me) startRematch(); else { const sc = document.getElementById('gscore'); if (sc) sc.textContent = 'Your friend wants a rematch! Tap Rematch.'; }
@@ -492,6 +510,8 @@ function gamesView() {
       <div class="gcard"><div class="gi">🟡</div><b>Pac-Man</b><div><button data-g="pacman" data-m="solo">Play</button></div></div>
       <div class="gcard"><div class="gi">🔴</div><b>Connect 4</b><div><button data-g="c4" data-m="cpu">vs CPU</button>${fr('c4')}</div></div>
       <div class="gcard"><div class="gi">🎤</div><b>Rhythm</b><div><button data-g="fnf" data-m="solo">Play</button></div></div>
+      <div class="gcard"><div class="gi">🔢</div><b>2048</b><div><button data-g="g2048" data-m="solo">Play</button></div></div>
+      <div class="gcard"><div class="gi">🧠</div><b>Memory</b><div><button data-g="memory" data-m="solo">Play</button></div></div>
     </div><div id="gstage"></div><div id="gboard" class="row"></div></div>`;
   renderBoard();
   app.querySelectorAll('[data-g]').forEach(b => b.onclick = () => {
@@ -500,6 +520,8 @@ function gamesView() {
     if (g === 'snake') playSnake();
     else if (g === 'pacman') playPacman();
     else if (g === 'fnf') playFnf();
+    else if (g === 'g2048') play2048();
+    else if (g === 'memory') playMemory();
     else if (mode === 'online') {
       const sid = Math.random().toString(36).slice(2, 8);
       G = { game: g, role: 'a', sid, wait: true };
@@ -670,6 +692,70 @@ function playFnf() {
     }, 16);
   };
   menu();
+}
+function play2048() {
+  const st = document.getElementById('gstage'), N = 4;
+  const COL = { 2: '#3a4560', 4: '#46557a', 8: '#e8913a', 16: '#ee7a2c', 32: '#f0613a', 64: '#f23d2e', 128: '#e8c33a', 256: '#e8c33a', 512: '#e0b520', 1024: '#d9a910' };
+  let b, score, over, saved, bd;
+  const empty = () => { const e = []; b.forEach((r, y) => r.forEach((v, x) => { if (!v) e.push([y, x]); })); return e; };
+  const add = () => { const e = empty(); if (!e.length) return; const [y, x] = e[Math.floor(Math.random() * e.length)]; b[y][x] = Math.random() < 0.9 ? 2 : 4; };
+  const slide = row => { const a = row.filter(Boolean); for (let i = 0; i < a.length - 1; i++) if (a[i] === a[i + 1]) { a[i] *= 2; score += a[i]; a.splice(i + 1, 1); } while (a.length < N) a.push(0); return a; };
+  const canMove = () => empty().length > 0 || b.some((r, y) => r.some((v, x) => (x < N - 1 && v === r[x + 1]) || (y < N - 1 && v === b[y + 1][x])));
+  const move = d => {
+    if (over) return;
+    const before = JSON.stringify(b);
+    for (let i = 0; i < N; i++) {
+      let line = (d === 'l' || d === 'r') ? b[i].slice() : b.map(r => r[i]);
+      if (d === 'r' || d === 'd') line.reverse();
+      line = slide(line);
+      if (d === 'r' || d === 'd') line.reverse();
+      if (d === 'l' || d === 'r') b[i] = line; else line.forEach((v, y) => { b[y][i] = v; });
+    }
+    if (JSON.stringify(b) !== before) add();
+    if (!canMove()) over = true;
+    draw();
+    if (over && !saved) { saved = true; recHS('g2048', score); }
+  };
+  const draw = () => {
+    const sz = Math.min(80, Math.floor((Math.min(360, window.innerWidth - 32) - 30) / 4));
+    st.innerHTML = `<div id="gttt" style="display:grid;grid-template-columns:repeat(4,${sz}px);gap:6px;justify-content:center;touch-action:none;margin:10px auto">${b.flat().map(v => `<div style="height:${sz}px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:${v > 512 ? 20 : v > 64 ? 24 : 28}px;background:${v ? (COL[v] || '#ffd34d') : 'var(--bg)'};color:${v > 4 ? '#fff' : 'var(--text)'}">${v || ''}</div>`).join('')}</div><p id="gscore" class="meta" style="text-align:center">Score ${score}${over ? ' — Game over' : ' · swipe or use the arrow keys'}</p>${over ? '<p style="text-align:center"><button id="gagain">Play again</button></p>' : ''}`;
+    bd = document.getElementById('gttt'); let sx = 0, sy = 0;
+    bd.addEventListener('touchstart', e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+    bd.addEventListener('touchend', e => { const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy; if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return; move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'r' : 'l') : (dy > 0 ? 'd' : 'u')); });
+    const ag = document.getElementById('gagain'); if (ag) ag.onclick = reset;
+  };
+  const reset = () => { b = Array.from({ length: N }, () => Array(N).fill(0)); score = 0; over = false; saved = false; add(); add(); draw(); };
+  const kk = e => {
+    const m = { ArrowUp: 'u', ArrowDown: 'd', ArrowLeft: 'l', ArrowRight: 'r' }[e.key]; if (!m) return;
+    if (!bd || !document.body.contains(bd)) { window.removeEventListener('keydown', kk); return; }
+    move(m); e.preventDefault();
+  };
+  window.addEventListener('keydown', kk);
+  reset();
+}
+function playMemory() {
+  const st = document.getElementById('gstage'), E = ['🐱', '🐶', '🦊', '🐼', '🐸', '🦁', '🐵', '🐙'];
+  const cards = [...E, ...E].map(e => ({ e, r: Math.random() })).sort((a, b) => a.r - b.r);
+  let open = [], done = new Set(), moves = 0, lock = false, t0 = 0, fin = false, fs = 0, bd;
+  const draw = () => {
+    st.innerHTML = `<div id="gttt" style="display:grid;grid-template-columns:repeat(4,72px);gap:8px;justify-content:center;margin:10px auto">${cards.map((c, k) => `<button data-k="${k}" style="height:72px;font-size:34px;${done.has(k) ? 'opacity:.5;' : ''}">${done.has(k) || open.includes(k) ? c.e : '❔'}</button>`).join('')}</div><p id="gscore" class="meta" style="text-align:center">Moves ${moves}${fin ? ' — done! Score ' + fs : ''}</p>${fin ? '<p style="text-align:center"><button id="gagain">Play again</button></p>' : ''}`;
+    bd = document.getElementById('gttt');
+    st.querySelectorAll('#gttt button').forEach(b => b.onclick = () => flip(+b.dataset.k));
+    const ag = document.getElementById('gagain'); if (ag) ag.onclick = playMemory;
+  };
+  const flip = k => {
+    if (lock || fin || done.has(k) || open.includes(k)) return;
+    if (!t0) t0 = Date.now();
+    open.push(k); draw();
+    if (open.length < 2) return;
+    moves++; const [a, c] = open;
+    if (cards[a].e === cards[c].e) {
+      done.add(a); done.add(c); open = [];
+      if (done.size === 16) { fin = true; fs = Math.max(10, 1000 - moves * 20 - Math.round((Date.now() - t0) / 1000) * 3); recHS('memory', fs); }
+      draw();
+    } else { lock = true; setTimeout(() => { open = []; lock = false; if (bd && document.body.contains(bd)) draw(); }, 700); }
+  };
+  draw();
 }
 function playPacman() {
   const M = ['###############', '#*.....#.....*#', '#.##.#.#.#.##.#', '#.............#', '#.##.##.##.##.#', '#....#   #....#', '####.# G #.####', '#....#   #....#', '#.##.#####.##.#', '#.............#', '#.##.#.#.#.##.#', '#*.....P.....*#', '###############'];
@@ -1408,6 +1494,7 @@ function updatePartyUI() {
         <input id="synctime-in" type="text" placeholder="MM:SS" style="width:65px;padding:5px 8px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:13px" title="Enter minute:second to sync all friends">
         <button id="syncnow" title="Force all friends to jump to this timestamp & episode">⚡ Sync Time</button>
         <button id="startall" title="Reload everyone's player at your current time, then a countdown so everyone taps play together">▶ Start together</button>
+        <button id="readyall" title="Ask everyone if they are ready; when all say yes, the countdown starts">✅ Everyone ready?</button>
       </div>
       <button id="leaveparty">End Party</button>${profileHtml}`;
     bindProfileControls();
@@ -1417,6 +1504,10 @@ function updatePartyUI() {
         ev.target.textContent = '✅ Copied!';
         setTimeout(() => { if (ev.target) ev.target.textContent = '📋 Copy Discord Link'; }, 2500);
       } catch (e) { prompt('Copy this invite link for Discord:', getPartyUrl()); }
+    };
+    document.getElementById('readyall').onclick = ev => {
+      party.ready = {}; sendGame({ op: 'readyq' });
+      ev.currentTarget.textContent = '✅ Ready 0/' + party.conns.filter(c => c.open).length;
     };
     document.getElementById('startall').onclick = ev => {
       if (!current) return;
@@ -2990,6 +3081,8 @@ function showNext(s, e) {
 }
 
 const PATCHNOTES = [
+  { v: '55', c: ['iPhone: fixed the header (logo, search bar, buttons) disappearing and the menu bar sitting inside the header.'] },
+  { v: '54', c: ['Games: 2048 and Memory, both with a leaderboard. Watch Party: new ✅ Everyone ready? button for the host. When every friend taps “I’m ready”, the shared countdown starts by itself.'] },
   { v: '53', c: ['Watch Party: emoji reactions that float up on everyone’s screen. Games: Rematch button after online Pong, Tic-Tac-Toe and Connect 4; Rhythm now has 3 songs (different tempos) and easy / normal / hard. Profile: badges and a custom banner (color or image). Title pages: where to watch (streaming providers). Themes: share your colors with a code, and paste a friend’s code.'] },
   { v: '52', c: ['Watch Party: new ▶ Start together button for the host. It reloads everyone’s player at your current time and shows a big 7-second countdown on every screen, so everyone taps play at the same moment.'] },
   { v: '51', c: ['My list now shows your profile photo with your name under it. Double-tap the photo to pick a new one from your gallery, double-tap the name to rename yourself.'] },
