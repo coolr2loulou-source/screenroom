@@ -290,7 +290,7 @@ body.theater #next{position:fixed;left:50%;transform:translateX(-50%);bottom:cal
 <p class="attr">This product uses the TMDB API but is not endorsed or certified by TMDB. <span id="contact"></span></p>
 
 <script>
-const APP_VERSION = '45';
+const APP_VERSION = '46';
 const IMG = 'https://image.tmdb.org/t/p/';
 const app = document.getElementById('app');
 const q = document.getElementById('q');
@@ -937,8 +937,12 @@ function updatePartyUI() {
       } else {
         secs = +val || 0;
       }
-      party.lastTime = secs; party.lastTimeAt = Date.now();
-      broadcastPartyState(true);
+      if (!val) secs = Math.floor(party.lastTime || 0);
+      party.lastTime = secs; party.lastTimeAt = 0; party.lastState = 'paused';
+      const hf = document.getElementById('frame');
+      if (hf && current) hf.src = getEmbedUrl(playerProv, current.type, current.id, current.s || 1, current.e || 1, secs);
+      broadcastPartyState(true, true);
+      partyCountdown(secs);
       ev.target.textContent = '⚡ Synced!';
       setTimeout(() => { if (ev.target) ev.target.textContent = '⚡ Sync Time'; }, 1500);
     };
@@ -984,7 +988,7 @@ function updatePartyUI() {
   updateTheaterChatBtn();
 }
 
-function broadcastPartyState(force = false) {
+function broadcastPartyState(force = false, hard = false) {
   if (!party.active || party.role !== 'host' || !current) return;
   const now = Date.now();
   if (!force && now - party.lastBroadcast < 1200) return;
@@ -992,6 +996,7 @@ function broadcastPartyState(force = false) {
   const payload = {
     type: 'sync',
     force,
+    hard,
     mediaType: current.type,
     id: current.id,
     s: current.s || 1,
@@ -1097,14 +1102,23 @@ document.addEventListener('visibilitychange', () => {
   } else if (party.peer && party.peer.disconnected) { try { party.peer.reconnect(); } catch (e) {} }
 });
 
+function partyCountdown(t) {
+  const nb = document.getElementById('next'); if (!nb) return;
+  clearInterval(nextTimer); clearInterval(window.__pcd);
+  const mm = Math.floor(t / 60), ss = String(t % 60).padStart(2, '0'); let n = 5;
+  const paint = () => { nb.innerHTML = `<div class="nextup"><span>⚡ Synced to ${mm}:${ss}. Everyone tap ▶ when this hits GO: <b>${n > 0 ? n : 'GO!'}</b></span></div>`; };
+  paint();
+  window.__pcd = setInterval(() => { n--; paint(); if (n < -2) { clearInterval(window.__pcd); nb.innerHTML = ''; } }, 1000);
+}
 function applyHostSync(msg) {
   if (!current) return;
   const rttSec = Math.max(0, (Date.now() - (msg.sentAt || Date.now())) / 1000);
-  const targetTime = Math.floor((msg.time || 0) + (msg.state === 'playing' ? rttSec : 0));
+  const targetTime = Math.floor((msg.time || 0) + (!msg.hard && msg.state === 'playing' ? rttSec : 0));
 
   // Switch title if host navigated
   if (String(current.id) !== String(msg.id) || current.type !== msg.mediaType) {
     watch(msg.mediaType, msg.id, { s: msg.s, e: msg.e, t: targetTime }, true);
+    if (msg.hard) setTimeout(() => partyCountdown(targetTime), 1800);
     return;
   }
   // Switch provider if needed
@@ -1122,6 +1136,15 @@ function applyHostSync(msg) {
     const f = document.getElementById('frame');
     if (f) f.src = getEmbedUrl(playerProv, current.type, current.id, msg.s, msg.e, targetTime);
     if (epRedraw) epRedraw();
+    if (msg.hard) partyCountdown(targetTime);
+    return;
+  }
+  // Manual "Sync Time" from the host: always jump, no cooldown, then everyone presses play together
+  if (msg.hard) {
+    party.lastTime = targetTime; party.lastTimeAt = 0; party.lastCorrect = Date.now(); party.synced = true;
+    const hf = document.getElementById('frame');
+    if (hf) hf.src = getEmbedUrl(playerProv, current.type, current.id, current.s, current.e, targetTime);
+    partyCountdown(targetTime);
     return;
   }
   // Drift correction: never touch the player while the host is paused, and reload at most once per 30s
@@ -1131,7 +1154,7 @@ function applyHostSync(msg) {
   const first = !party.synced;
   party.synced = true;
   if (now - (party.lastCorrect || 0) < 30000) return;
-  if (((first || msg.force) && drift > 4) || (fresh && drift > 15)) {
+  if ((first && drift > 4) || (msg.force && drift > 10) || (fresh && drift > 15)) {
     party.lastTime = targetTime; party.lastTimeAt = 0; party.lastCorrect = now;
     const f = document.getElementById('frame');
     if (f) f.src = getEmbedUrl(playerProv, current.type, current.id, current.s, current.e, targetTime);
@@ -2411,6 +2434,7 @@ function showNext(s, e) {
 }
 
 const PATCHNOTES = [
+  { v: '46', c: ['Watch Party “Sync Time” fixed: the host player now jumps too (before, it kept sending its old time and pulled everyone back), guests always jump to the typed time, and a 5-second countdown tells everyone when to tap play together. Leave the box empty to sync everyone to your current time. Play/pause by the host no longer restarts friends’ players.'] },
   { v: '45', c: ['Quick ♡ on every poster: tap to add or remove a title from My list without opening it. New 🎁 My Wrapped card in My list: your hours, days watched, completed titles and top-rated picks.'] },
   { v: '44', c: ['Rate titles with your own 5 stars (sort My list by My rating). Mood buttons on Home (Comedy, Horror, Romance…). Daily watching streak 🔥 in your stats. A secret surprise: tap the logo 7 times, or try the Konami code on a keyboard.'] },
   { v: '43', c: ['New themes: Miku, Teto, Rei (with floating ♪ / 🥖 / ✦ effects, switchable), plus Synthwave, Cyber and Matrix. New 😴 Sleep timer on title pages to stop playback after a delay. New 🎲 Pick for me button in My list chooses an unwatched title from your favorites.'] },
