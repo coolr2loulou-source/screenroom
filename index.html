@@ -223,6 +223,9 @@ body.theater nav{display:none}
 @keyframes fxfall{to{transform:translateY(115vh) rotate(360deg)}}
 body.theater #fx{display:none}
 .qf{position:absolute;top:6px;right:6px;width:30px;height:30px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#fff;font-size:16px;padding:0;z-index:2;cursor:pointer}.qf.on{color:var(--accent)}
+.gmenu{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:10px 0 18px}.gcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;text-align:center}.gcard .gi{font-size:34px}.gcard button{margin:6px 3px 0}
+#gtoast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:250;background:var(--surface);border:1px solid var(--accent);border-radius:12px;padding:12px 16px;display:flex;gap:10px;align-items:center;max-width:92vw}
+@keyframes rise{from{transform:translateY(0) scale(.8);opacity:1}to{transform:translateY(-280px) scale(1.4);opacity:0}}
 .party-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:12px}
 .party-bar.active{border-color:var(--accent);box-shadow:0 0 12px rgba(255,122,69,0.2)}
 .party-badge{background:var(--accent);color:#141922;font-weight:700;font-size:12px;padding:2px 8px;border-radius:999px}
@@ -272,6 +275,7 @@ body.theater #next{position:fixed;left:50%;transform:translateX(-50%);bottom:cal
     <button data-tab="tv">Series</button>
     <button data-tab="upcoming">Upcoming</button>
     <button data-tab="list">My list</button>
+    <button data-tab="games">Games</button>
   </nav>
   <div class="search-wrap">
     <input id="q" type="search" placeholder="Search a movie or show…" title="Press / to search" autocomplete="off">
@@ -290,7 +294,7 @@ body.theater #next{position:fixed;left:50%;transform:translateX(-50%);bottom:cal
 <p class="attr">This product uses the TMDB API but is not endorsed or certified by TMDB. <span id="contact"></span></p>
 
 <script>
-const APP_VERSION = '46';
+const APP_VERSION = '53';
 const IMG = 'https://image.tmdb.org/t/p/';
 const app = document.getElementById('app');
 const q = document.getElementById('q');
@@ -334,6 +338,7 @@ function applyFx(t) {
   document.body.appendChild(d);
 }
 function applyPreset(name) {
+  if (name === 'custom') { try { THEMES.custom = JSON.parse(localStorage.getItem('theme_code')); } catch (e) {} }
   const st = document.documentElement.style, keys = ['bg', 'surface', 'line', 'text', 'muted', 'accent'];
   keys.forEach(k => st.removeProperty('--' + k));
   const t = THEMES[name];
@@ -379,6 +384,434 @@ function showWrapped() {
   document.body.appendChild(o);
   o.onclick = ev => { if (ev.target === o || ev.target.id === 'wrapx') o.remove(); };
 }
+let G = null;
+const playFn = g => ({ pong: playPong, ttt: playTtt, c4: playC4 })[g];
+const gAlive = () => !!(document.getElementById('gcv') || document.getElementById('gttt'));
+const sendGame = m => {
+  if (!party.active) return;
+  const o = { type: 'game', ...m };
+  if (party.role === 'host') party.conns.forEach(c => { if (c.open) try { c.send(o); } catch (e) {} });
+  else if (party.hostConn && party.hostConn.open) try { party.hostConn.send(o); } catch (e) {}
+};
+function showReact(e) {
+  const el = document.createElement('div'); el.textContent = String(e || '').slice(0, 4);
+  el.style.cssText = `position:fixed;left:${15 + Math.random() * 70}%;bottom:25%;font-size:44px;z-index:9998;pointer-events:none;animation:rise 2.2s ease-out forwards`;
+  document.body.appendChild(el); setTimeout(() => el.remove(), 2300);
+}
+function ensureReactBar() {
+  let bar = document.getElementById('preact');
+  if (!party.active) { if (bar) bar.remove(); return; }
+  if (bar) return;
+  bar = document.createElement('div'); bar.id = 'preact';
+  bar.style.cssText = 'position:fixed;left:8px;bottom:150px;z-index:240;display:flex;flex-direction:column;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 4px';
+  bar.innerHTML = ['😂', '😱', '❤️', '👏', '🔥'].map(e => `<button style="background:none;border:0;font-size:22px;padding:2px 6px">${e}</button>`).join('');
+  bar.querySelectorAll('button').forEach(b => b.onclick = () => { showReact(b.textContent); sendGame({ op: 'react', emoji: b.textContent }); });
+  document.body.appendChild(bar);
+}
+const _upu = updatePartyUI; updatePartyUI = function () { _upu.apply(this, arguments); ensureReactBar(); };
+function rematchBtn(fn) {
+  if (!G) return; G.rm = G.rm || {}; G.rmfn = fn; G.rm.me = true; sendGame({ op: 'rematch', sid: G.sid });
+  if (G.rm.opp) startRematch(); else { const sc = document.getElementById('gscore'); if (sc) sc.textContent = 'Rematch asked… waiting for your friend'; }
+}
+function startRematch() { const fn = G.rmfn; G.rm = {}; G.rs = true; setTimeout(() => { if (G) G.rs = false; }, 300); fn(true); }
+function badgesHtml() {
+  const w = getWT(), hrs = ((w.movie || 0) + (w.tv || 0)) / 3600; let streak = 0;
+  try { const days = new Set(JSON.parse(localStorage.getItem('wdays') || '[]')), d = new Date(), f = () => d.toLocaleDateString('en-CA'); if (!days.has(f())) d.setDate(d.getDate() - 1); while (days.has(f())) { streak++; d.setDate(d.getDate() - 1); } } catch (e) {}
+  const list = [[streak >= 7, '🔥 7-day streak'], [hrs >= 10, '⏱ 10h watched'], [Object.keys(getMR()).length >= 5, '⭐ 5 titles rated'], [localStorage.getItem('badge_party') === '1', '🎉 Party animal'], [lsGet('fav').length >= 10, '📚 10 favorites'], [Object.keys(getHS()).length > 0, '🎮 Gamer']].filter(x => x[0]);
+  return `<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:340px">${list.map(x => `<span style="font-size:12px;padding:3px 9px;border-radius:999px;background:var(--surface);border:1px solid var(--line)">${x[1]}</span>`).join('') || '<span class="meta" style="font-size:12px">Badges unlock as you watch, rate and play</span>'}</div>`;
+}
+async function loadProviders(type, id) {
+  const el = document.getElementById('wherebox'); if (!el) return;
+  try {
+    const r = await api(`/${type}/${id}/watch/providers`), all = (r && r.results) || {};
+    const cc = ((navigator.language || 'en-US').split('-')[1] || 'US').toUpperCase(), used = all[cc] ? cc : 'US', reg = all[used];
+    if (!reg) return;
+    const mk = (a, l) => a && a.length ? `<div style="margin:4px 0"><span class="meta">${l}</span> ${a.slice(0, 6).map(x => `<img src="${IMG}w92${x.logo_path}" alt="${esc(x.provider_name)}" title="${esc(x.provider_name)}" style="height:28px;border-radius:6px;vertical-align:middle;margin-right:4px">`).join('')}</div>` : '';
+    const h = mk(reg.flatrate, 'Stream') + mk(reg.rent, 'Rent') + mk(reg.buy, 'Buy');
+    el.innerHTML = h ? `<div class="meta">Where to watch (${used})</div>${h}` : '';
+  } catch (e) {}
+}
+const GAMES_LB = [['snake', '🐍 Snake'], ['pacman', '🟡 Pac-Man'], ['fnf', '🎤 Rhythm']];
+const getLB = () => { try { const o = JSON.parse(localStorage.getItem('lb') || '{}'); return o && typeof o === 'object' && !Array.isArray(o) ? o : {}; } catch (e) { return {}; } };
+function mergeLB(name, scores) {
+  if (!name || !scores || typeof scores !== 'object') return;
+  const n = String(name).slice(0, 24), lb = getLB(), cur = lb[n] || {};
+  GAMES_LB.forEach(([g]) => { const v = Math.floor(+scores[g] || 0); if (v > (cur[g] || 0)) cur[g] = v; });
+  lb[n] = cur;
+  try { localStorage.setItem('lb', JSON.stringify(lb)); } catch (e) {}
+}
+const getHS = () => getLB()[getUserProfile().name] || {};
+const shareScores = ask => sendGame({ op: 'hs', name: getUserProfile().name, scores: getHS(), ask: !!ask });
+function recHS(g, v) { mergeLB(getUserProfile().name, { [g]: v }); shareScores(false); renderBoard(); }
+function renderBoard(g) {
+  const el = document.getElementById('gboard'); if (!el) return;
+  g = g || (document.getElementById('gbsel') || {}).value || 'snake';
+  const lb = getLB(), me = getUserProfile().name;
+  const rows = Object.keys(lb).map(n => ({ n, v: lb[n][g] || 0 })).filter(r => r.v > 0).sort((a, b) => b.v - a.v).slice(0, 10);
+  el.innerHTML = `<div class="hd"><h2 class="sec">Leaderboard</h2><select id="gbsel">${GAMES_LB.map(([k, l]) => `<option value="${k}"${k === g ? ' selected' : ''}>${l}</option>`).join('')}</select></div>${rows.length ? `<ol style="padding-left:22px;margin:8px 0">${rows.map((r, i) => `<li style="padding:4px 0${r.n === me ? ';color:var(--accent);font-weight:700' : ''}">${['🥇', '🥈', '🥉'][i] || ''} ${esc(r.n)} — <b>${r.v}</b></li>`).join('')}</ol>` : '<p class="meta">No scores yet — play a game!</p>'}<p class="meta">${party.active ? 'Shared live with your party.' : 'Join a party to compare with friends.'}</p>`;
+  document.getElementById('gbsel').onchange = ev => renderBoard(ev.target.value);
+}
+function handleGameMsg(m) {
+  if (m.op === 'react') { showReact(m.emoji); return; }
+  if (m.op === 'rematch' && G && G.sid === m.sid) {
+    G.rm = G.rm || {}; G.rm.opp = true;
+    if (G.rm.me) startRematch(); else { const sc = document.getElementById('gscore'); if (sc) sc.textContent = 'Your friend wants a rematch! Tap Rematch.'; }
+    return;
+  }
+  if (m.op === 'hs') { mergeLB(m.name, m.scores); if (m.ask) shareScores(false); renderBoard(); return; }
+  if (m.op === 'invite') {
+    if (G && G.sid) return;
+    const old = document.getElementById('gtoast'); if (old) old.remove();
+    const t = document.createElement('div'); t.id = 'gtoast';
+    t.innerHTML = `<span>${esc(m.name || 'A friend')} invites you to ${({ pong: 'Pong 🏓', ttt: 'Tic-Tac-Toe ❌⭕', c4: 'Connect 4 🔴' })[m.game] || 'a game'}</span><button id="gjoin">Join</button><button id="gno">✕</button>`;
+    document.body.appendChild(t);
+    document.getElementById('gno').onclick = () => t.remove();
+    document.getElementById('gjoin').onclick = async () => {
+      t.remove(); tab = 'games'; navStack = []; current = null; await home();
+      G = { game: m.game, role: 'b', sid: m.sid, opp: m.name };
+      sendGame({ op: 'accept', sid: m.sid, name: getUserProfile().name });
+      playFn(m.game)(true);
+    };
+    setTimeout(() => t.remove(), 25000);
+  } else if (m.op === 'accept' && G && G.wait && G.sid === m.sid) {
+    G.wait = false; G.opp = m.name; playFn(G.game)(true);
+  } else if (G && G.sid === m.sid) {
+    if (m.op === 'quit') { const sc = document.getElementById('gscore'); if (sc) sc.textContent = 'Your friend left the game.'; }
+    else if (G.onmsg) G.onmsg(m);
+  }
+}
+function gamesView() {
+  updateBackVisibility(); clearHash(); G = null;
+  const fr = g => party.active ? `<button data-g="${g}" data-m="online">👥 vs friend</button>` : '<button disabled title="Host or join a party first">👥 vs friend</button>';
+  app.innerHTML = `<div class="row"><div class="hd"><h2 class="sec">Games</h2></div>
+    <p class="meta">Play alone, or against a friend in your Watch Party.</p>
+    <div class="gmenu">
+      <div class="gcard"><div class="gi">🐍</div><b>Snake</b><div><button data-g="snake" data-m="solo">Play</button></div></div>
+      <div class="gcard"><div class="gi">🏓</div><b>Pong</b><div><button data-g="pong" data-m="cpu">vs CPU</button>${fr('pong')}</div></div>
+      <div class="gcard"><div class="gi">❌⭕</div><b>Tic-Tac-Toe</b><div><button data-g="ttt" data-m="cpu">vs CPU</button>${fr('ttt')}</div></div>
+      <div class="gcard"><div class="gi">🟡</div><b>Pac-Man</b><div><button data-g="pacman" data-m="solo">Play</button></div></div>
+      <div class="gcard"><div class="gi">🔴</div><b>Connect 4</b><div><button data-g="c4" data-m="cpu">vs CPU</button>${fr('c4')}</div></div>
+      <div class="gcard"><div class="gi">🎤</div><b>Rhythm</b><div><button data-g="fnf" data-m="solo">Play</button></div></div>
+    </div><div id="gstage"></div><div id="gboard" class="row"></div></div>`;
+  renderBoard();
+  app.querySelectorAll('[data-g]').forEach(b => b.onclick = () => {
+    const g = b.dataset.g, mode = b.dataset.m;
+    G = null;
+    if (g === 'snake') playSnake();
+    else if (g === 'pacman') playPacman();
+    else if (g === 'fnf') playFnf();
+    else if (mode === 'online') {
+      const sid = Math.random().toString(36).slice(2, 8);
+      G = { game: g, role: 'a', sid, wait: true };
+      document.getElementById('gstage').innerHTML = '<p class="meta" style="text-align:center">Invite sent… waiting for a friend to join.</p>';
+      sendGame({ op: 'invite', game: g, sid, name: getUserProfile().name });
+    } else playFn(g)(false);
+    document.getElementById('gstage').scrollIntoView({ behavior: 'smooth' });
+  });
+}
+function playSnake() {
+  const st = document.getElementById('gstage'), N = 18, c = Math.floor(Math.min(360, window.innerWidth - 32) / N), Z = N * c;
+  st.innerHTML = `<canvas id="gcv" width="${Z}" height="${Z}" style="display:block;margin:10px auto;border:1px solid var(--line);border-radius:10px;touch-action:none;background:var(--bg)"></canvas><div id="gscore" class="meta" style="text-align:center"></div><div style="display:grid;grid-template-columns:repeat(3,56px);gap:6px;justify-content:center;margin-top:8px"><span></span><button data-d="u">▲</button><span></span><button data-d="l">◀</button><button data-d="d">▼</button><button data-d="r">▶</button></div>`;
+  const cv = document.getElementById('gcv'), cx = cv.getContext('2d'), acc = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#ff7a45';
+  let sn, dir, nd, food, score, dead, best = +localStorage.getItem('snake_best') || 0;
+  const spawn = () => { do { food = { x: Math.floor(Math.random() * N), y: Math.floor(Math.random() * N) }; } while (sn.some(p => p.x === food.x && p.y === food.y)); };
+  const reset = () => { sn = [{ x: 9, y: 9 }, { x: 8, y: 9 }, { x: 7, y: 9 }]; dir = nd = { x: 1, y: 0 }; score = 0; dead = false; spawn(); };
+  const turn = d => { const v = { u: { x: 0, y: -1 }, d: { x: 0, y: 1 }, l: { x: -1, y: 0 }, r: { x: 1, y: 0 } }[d]; if (v && !(v.x === -dir.x && v.y === -dir.y)) nd = v; };
+  st.querySelectorAll('button[data-d]').forEach(b => b.onclick = () => turn(b.dataset.d));
+  const kk = e => { const m = { ArrowUp: 'u', ArrowDown: 'd', ArrowLeft: 'l', ArrowRight: 'r' }[e.key]; if (m) { turn(m); e.preventDefault(); } };
+  window.addEventListener('keydown', kk);
+  let sx = 0, sy = 0;
+  cv.addEventListener('touchstart', e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+  cv.addEventListener('touchend', e => { const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy; if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) { if (dead) reset(); return; } turn(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'r' : 'l') : (dy > 0 ? 'd' : 'u')); });
+  cv.addEventListener('click', () => { if (dead) reset(); });
+  reset();
+  const id = setInterval(() => {
+    if (document.getElementById('gcv') !== cv) { clearInterval(id); window.removeEventListener('keydown', kk); return; }
+    if (!dead) {
+      dir = nd; const h = { x: sn[0].x + dir.x, y: sn[0].y + dir.y };
+      if (h.x < 0 || h.y < 0 || h.x >= N || h.y >= N || sn.some(p => p.x === h.x && p.y === h.y)) { dead = true; recHS('snake', score); if (score > best) { best = score; try { localStorage.setItem('snake_best', best); } catch (e) {} } }
+      else { sn.unshift(h); if (h.x === food.x && h.y === food.y) { score++; spawn(); } else sn.pop(); }
+    }
+    cx.clearRect(0, 0, Z, Z); cx.fillStyle = acc;
+    sn.forEach((p, i) => { cx.globalAlpha = i ? 0.8 : 1; cx.fillRect(p.x * c + 1, p.y * c + 1, c - 2, c - 2); });
+    cx.globalAlpha = 1; cx.fillStyle = '#ff4d4d'; cx.beginPath(); cx.arc(food.x * c + c / 2, food.y * c + c / 2, c / 2 - 2, 0, 7); cx.fill();
+    document.getElementById('gscore').textContent = dead ? `Game over — score ${score}. Tap to restart` : `Score ${score} · Best ${best}`;
+  }, 120);
+}
+function playPong(online) {
+  const st = document.getElementById('gstage'), W = 400, H = 300, PH = 60;
+  st.innerHTML = '<canvas id="gcv" width="400" height="300" style="display:block;margin:10px auto;width:100%;max-width:400px;border:1px solid var(--line);border-radius:10px;touch-action:none;background:var(--bg)"></canvas><div id="gscore" class="meta" style="text-align:center">Drag to move your paddle · first to 7</div>';
+  const cv = document.getElementById('gcv'), cx = cv.getContext('2d'), cs = getComputedStyle(document.documentElement);
+  const acc = cs.getPropertyValue('--accent').trim() || '#ff7a45', fg = cs.getPropertyValue('--text').trim() || '#fff';
+  const role = online ? G.role : 'a', sim = !online || role === 'a', sid = online ? G.sid : '';
+  let pa = 120, pb = 120, bx = 200, by = 150, vx = 3.2, vy = 1.5, sa = 0, sb = 0, over = false, tick = 0;
+  const serve = d => { bx = 200; by = 150; vx = 3.2 * d; vy = Math.random() * 3 - 1.5; };
+  const mine = y => { const v = Math.max(0, Math.min(H - PH, y - PH / 2)); if (role === 'a') pa = v; else pb = v; };
+  const pos = e => { const r = cv.getBoundingClientRect(), t = e.touches ? e.touches[0] : e; mine((t.clientY - r.top) * H / r.height); e.preventDefault(); };
+  ['touchstart', 'touchmove', 'mousemove'].forEach(ev => cv.addEventListener(ev, pos, { passive: false }));
+  const kk = e => { const cur = role === 'a' ? pa : pb; if (e.key === 'ArrowUp') mine(cur + PH / 2 - 20); if (e.key === 'ArrowDown') mine(cur + PH / 2 + 20); };
+  window.addEventListener('keydown', kk);
+  cv.addEventListener('click', () => { if (over && !online) playPong(false); else if (over && online) rematchBtn(playPong); });
+  if (online) G.onmsg = m => { if (m.op === 'pad' && sim) pb = m.y; else if (m.op === 'state' && !sim) { bx = m.bx; by = m.by; pa = m.pa; sa = m.sa; sb = m.sb; over = m.over; } };
+  const id = setInterval(() => {
+    if (document.getElementById('gcv') !== cv) { clearInterval(id); window.removeEventListener('keydown', kk); if (online && !(G && G.rs)) sendGame({ op: 'quit', sid }); return; }
+    if (sim && !over) {
+      bx += vx; by += vy;
+      if (by < 6 || by > H - 6) vy = -vy;
+      if (vx < 0 && bx - 6 <= 18 && bx > 6 && by > pa - 4 && by < pa + PH + 4) { vx = Math.min(8, -vx * 1.06); vy += (by - (pa + PH / 2)) * 0.07; }
+      if (vx > 0 && bx + 6 >= W - 18 && bx < W - 6 && by > pb - 4 && by < pb + PH + 4) { vx = Math.max(-8, -vx * 1.06); vy += (by - (pb + PH / 2)) * 0.07; }
+      if (bx < 0) { sb++; serve(1); } else if (bx > W) { sa++; serve(-1); }
+      if (!online) pb += Math.max(-3.4, Math.min(3.4, by - (pb + PH / 2)));
+      pb = Math.max(0, Math.min(H - PH, pb));
+      if (sa >= 7 || sb >= 7) over = true;
+    }
+    if (online && ++tick % 2 === 0) sendGame(sim ? { op: 'state', sid, bx, by, pa, sa, sb, over } : { op: 'pad', sid, y: pb });
+    cx.clearRect(0, 0, W, H); cx.fillStyle = fg; cx.globalAlpha = 0.25;
+    for (let y = 0; y < H; y += 20) cx.fillRect(W / 2 - 1, y, 2, 10);
+    cx.globalAlpha = 1; cx.fillStyle = acc; cx.fillRect(10, pa, 8, PH); cx.fillRect(W - 18, pb, 8, PH);
+    cx.fillStyle = fg; cx.beginPath(); cx.arc(bx, by, 6, 0, 7); cx.fill();
+    cx.font = 'bold 28px sans-serif'; cx.textAlign = 'center'; cx.fillText(sa, W / 2 - 40, 34); cx.fillText(sb, W / 2 + 40, 34);
+    if (over) { const won = role === 'a' ? sa > sb : sb > sa; cx.font = 'bold 26px sans-serif'; cx.fillText(won ? 'You win! 🎉' : 'You lose', W / 2, H / 2); { cx.font = '14px sans-serif'; cx.fillText(online ? 'Tap for a rematch' : 'Tap to play again', W / 2, H / 2 + 26); } }
+  }, 16);
+}
+function playFnf() {
+  const st = document.getElementById('gstage');
+  const opt = { mid: localStorage.getItem('fnf_mid') === '1', down: localStorage.getItem('fnf_down') === '1', diff: localStorage.getItem('fnf_diff') || 'normal', song: +localStorage.getItem('fnf_song') || 0 };
+  const SONGS = [{ n: 'Chill — 90 BPM', bpm: 90, pit: [262, 330, 392, 523] }, { n: 'Groove — 110 BPM', bpm: 110, pit: [294, 370, 440, 587] }, { n: 'Rush — 135 BPM', bpm: 135, pit: [330, 415, 494, 659] }];
+  const save = (k, v) => { try { localStorage.setItem(k, v ? '1' : '0'); } catch (ex) {} };
+  const menu = () => {
+    st.innerHTML = `<div style="text-align:center"><p class="meta">Hit each arrow when it reaches the receptors. Tap the lanes, or use ← ↓ ↑ → (or D F J K). Turn the sound on.</p>
+      <label><input type="checkbox" id="fnfmid" ${opt.mid ? 'checked' : ''}> Center the bars (middlescroll)</label><br>
+      <label><input type="checkbox" id="fnfdown" ${opt.down ? 'checked' : ''}> Put the bars down (downscroll)</label><br>
+      <select id="fnfsong">${SONGS.map((x, i) => `<option value="${i}"${opt.song === i ? ' selected' : ''}>${x.n}</option>`).join('')}</select> <select id="fnfdiff">${['easy', 'normal', 'hard'].map(d => `<option value="${d}"${opt.diff === d ? ' selected' : ''}>${d}</option>`).join('')}</select>
+      <p><button id="fnfgo">▶ Start</button></p></div>`;
+    document.getElementById('fnfmid').onchange = ev => { opt.mid = ev.target.checked; save('fnf_mid', opt.mid); };
+    document.getElementById('fnfdown').onchange = ev => { opt.down = ev.target.checked; save('fnf_down', opt.down); };
+    document.getElementById('fnfsong').onchange = ev => { opt.song = +ev.target.value; try { localStorage.setItem('fnf_song', opt.song); } catch (ex) {} };
+    document.getElementById('fnfdiff').onchange = ev => { opt.diff = ev.target.value; try { localStorage.setItem('fnf_diff', opt.diff); } catch (ex) {} };
+    document.getElementById('fnfgo').onclick = run;
+  };
+  const run = () => {
+    const AC = window.AudioContext || window.webkitAudioContext; let ac = null;
+    try { ac = new AC(); if (ac.resume) ac.resume(); } catch (ex) {}
+    const W = Math.min(420, window.innerWidth - 24), H = 440;
+    st.innerHTML = `<canvas id="gcv" width="${W}" height="${H}" style="display:block;margin:10px auto;border:1px solid var(--line);border-radius:10px;touch-action:none;background:var(--bg)"></canvas><div id="gscore" class="meta" style="text-align:center"></div>`;
+    const cv = document.getElementById('gcv'), cx = cv.getContext('2d');
+    const lw = opt.mid ? Math.min(70, W / 4.4) : W / 8.4, px0 = opt.mid ? (W - 4 * lw) / 2 : W / 2 + (W / 2 - 4 * lw) / 2, ox0 = (W / 2 - 4 * lw) / 2;
+    const recY = opt.down ? H - 70 : 44, dir = opt.down ? -1 : 1, SPD = 0.42, COL = ['#c24b99', '#00d5ff', '#12fa05', '#f9393f'], ROT = [-Math.PI / 2, Math.PI, 0, Math.PI / 2], PIT = (SONGS[opt.song] || SONGS[0]).pit;
+    const BPM = (SONGS[opt.song] || SONGS[0]).bpm, B = 60000 / BPM, stp = B / 2, lead = 2000, chart = []; let lastL = -1;
+    for (let sec = 0; sec < 14; sec++) for (let i = 0; i < 16; i++) {
+      if (Math.random() > ({ easy: 0.3, normal: 0.47, hard: 0.7 }[opt.diff] || 0.47)) continue;
+      let l = Math.floor(Math.random() * 4); if (l === lastL && Math.random() < 0.6) l = (l + 1 + Math.floor(Math.random() * 3)) % 4; lastL = l;
+      chart.push({ t: lead + (sec * 16 + i) * stp, lane: l, who: sec % 2 ? 'p' : 'o', done: false });
+    }
+    const endT = chart[chart.length - 1].t + 1500, total = chart.filter(n => n.who === 'p').length;
+    const tone = (f, d, type, v) => { if (!ac) return; try { const o = ac.createOscillator(), g = ac.createGain(), n = ac.currentTime; o.type = type; o.frequency.value = f; g.gain.setValueAtTime(v, n); g.gain.exponentialRampToValueAtTime(0.001, n + d); o.connect(g); g.connect(ac.destination); o.start(); o.stop(n + d); } catch (ex) {} };
+    const kick = () => { if (!ac) return; try { const o = ac.createOscillator(), g = ac.createGain(), n = ac.currentTime; o.frequency.setValueAtTime(140, n); o.frequency.exponentialRampToValueAtTime(40, n + 0.12); g.gain.setValueAtTime(0.35, n); g.gain.exponentialRampToValueAtTime(0.001, n + 0.15); o.connect(g); g.connect(ac.destination); o.start(); o.stop(n + 0.16); } catch (ex) {} };
+    const t0 = performance.now(), now = () => performance.now() - t0; let sv = false;
+    let score = 0, combo = 0, health = 0.5, over = false, failed = false, beat = 0, judge = null; const cnt = { sick: 0, good: 0, bad: 0, miss: 0 }, fl = [0, 0, 0, 0], fo = [0, 0, 0, 0];
+    const J = (txt, c) => { judge = { txt, c, t: performance.now() }; };
+    const press = lane => {
+      if (over) return; fl[lane] = performance.now() + 120;
+      const n = chart.find(x => x.who === 'p' && x.lane === lane && !x.done && Math.abs(x.t - now()) <= 135);
+      if (!n) return;
+      const d = Math.abs(n.t - now()); n.done = true; combo++;
+      if (d <= 45) { score += 350; cnt.sick++; health = Math.min(1, health + 0.04); J('SICK!', '#4de1ff'); }
+      else if (d <= 90) { score += 200; cnt.good++; health = Math.min(1, health + 0.03); J('Good', '#7dff7d'); }
+      else { score += 100; cnt.bad++; health = Math.min(1, health + 0.01); J('Bad', '#ffb347'); }
+      tone(PIT[lane] * 2, 0.1, 'square', 0.05);
+    };
+    const KEYS = { ArrowLeft: 0, ArrowDown: 1, ArrowUp: 2, ArrowRight: 3, d: 0, f: 1, j: 2, k: 3 };
+    const kk = ev => { const l = KEYS[ev.key] ?? KEYS[(ev.key || '').toLowerCase()]; if (l !== undefined) { press(l); ev.preventDefault(); } };
+    window.addEventListener('keydown', kk);
+    const tap = (cxp, r) => { const l = Math.floor((((cxp - r.left) * W / r.width) - px0) / lw); if (l >= 0 && l < 4) press(l); };
+    cv.addEventListener('touchstart', ev => { ev.preventDefault(); if (over) return; const r = cv.getBoundingClientRect(); [...ev.changedTouches].forEach(t => tap(t.clientX, r)); }, { passive: false });
+    cv.addEventListener('mousedown', ev => { if (!over) tap(ev.clientX, cv.getBoundingClientRect()); });
+    cv.addEventListener('click', () => { if (over) menu(); });
+    const arrow = (x, y, l, mode, a) => {
+      const sz = lw * 0.42; cx.save(); cx.translate(x, y); cx.rotate(ROT[l]); cx.globalAlpha = a;
+      cx.beginPath(); [[0, -sz], [sz, 0], [sz * 0.45, 0], [sz * 0.45, sz], [-sz * 0.45, sz], [-sz * 0.45, 0], [-sz, 0]].forEach((p, i) => i ? cx.lineTo(p[0], p[1]) : cx.moveTo(p[0], p[1])); cx.closePath();
+      if (mode === 'fill') { cx.fillStyle = COL[l]; cx.fill(); } else { cx.strokeStyle = '#fff'; cx.lineWidth = 2; cx.stroke(); }
+      cx.restore();
+    };
+    const id = setInterval(() => {
+      if (document.getElementById('gcv') !== cv) { clearInterval(id); window.removeEventListener('keydown', kk); try { ac && ac.close(); } catch (ex) {} return; }
+      const t = now(), pn = performance.now();
+      if (!over) {
+        while (t >= beat * B) { kick(); if (beat % 4 === 0) tone(98, 0.3, 'sine', 0.2); else if (beat % 4 === 2) tone(131, 0.25, 'sine', 0.18); beat++; }
+        chart.forEach(n => {
+          if (n.done) return;
+          if (n.who === 'o' && t >= n.t) { n.done = true; fo[n.lane] = pn + 120; tone(PIT[n.lane] / 2, 0.14, 'triangle', 0.1); }
+          else if (n.who === 'p' && t - n.t > 135) { n.done = true; combo = 0; cnt.miss++; health -= 0.08; J('MISS', '#ff5a5a'); tone(80, 0.15, 'sawtooth', 0.1); }
+        });
+        if (health <= 0) { over = true; failed = true; } else if (t > endT) over = true;
+      }
+      cx.clearRect(0, 0, W, H);
+      for (let l = 0; l < 4; l++) {
+        if (!opt.mid) arrow(ox0 + l * lw + lw / 2, recY, l, fo[l] > pn ? 'fill' : 'line', fo[l] > pn ? 1 : 0.35);
+        arrow(px0 + l * lw + lw / 2, recY, l, fl[l] > pn ? 'fill' : 'line', fl[l] > pn ? 1 : 0.6);
+      }
+      chart.forEach(n => {
+        if (n.done || (n.who === 'o' && opt.mid)) return;
+        const y = recY + dir * (n.t - t) * SPD; if (y < -40 || y > H + 40) return;
+        arrow((n.who === 'p' ? px0 : ox0) + n.lane * lw + lw / 2, y, n.lane, 'fill', n.who === 'p' ? 1 : 0.55);
+      });
+      const hy = opt.down ? 10 : H - 18, hw = W * 0.6, hx = (W - hw) / 2;
+      cx.fillStyle = '#ff4d4d'; cx.fillRect(hx, hy, hw, 8); cx.fillStyle = '#4de17d'; cx.fillRect(hx, hy, hw * Math.max(0, Math.min(1, health)), 8);
+      if (judge && pn - judge.t < 600) { cx.font = 'bold 22px sans-serif'; cx.textAlign = 'center'; cx.fillStyle = judge.c; cx.fillText(judge.txt, W / 2, H / 2); if (combo > 1) { cx.font = 'bold 16px sans-serif'; cx.fillStyle = '#fff'; cx.fillText(combo + ' combo', W / 2, H / 2 + 24); } }
+      const acc = total ? Math.round(((cnt.sick + cnt.good * 0.75 + cnt.bad * 0.4) / Math.max(1, cnt.sick + cnt.good + cnt.bad + cnt.miss)) * 100) : 0;
+      if (over) {
+        if (!sv) { sv = true; recHS('fnf', score); }
+        cx.fillStyle = 'rgba(0,0,0,.65)'; cx.fillRect(0, H / 2 - 60, W, 120); cx.fillStyle = '#fff'; cx.textAlign = 'center';
+        cx.font = 'bold 24px sans-serif'; cx.fillText(failed ? 'Game over 💀' : `Rank ${acc >= 95 ? 'S' : acc >= 85 ? 'A' : acc >= 70 ? 'B' : 'C'} · ${acc}%`, W / 2, H / 2 - 18);
+        cx.font = '14px sans-serif'; cx.fillText(`Sick ${cnt.sick} · Good ${cnt.good} · Bad ${cnt.bad} · Miss ${cnt.miss}`, W / 2, H / 2 + 8); cx.fillText('Tap for options / retry', W / 2, H / 2 + 34);
+      }
+      const sc = document.getElementById('gscore'); if (sc) sc.textContent = `Score ${score} · Combo ${combo} · Accuracy ${acc}%`;
+    }, 16);
+  };
+  menu();
+}
+function playPacman() {
+  const M = ['###############', '#*.....#.....*#', '#.##.#.#.#.##.#', '#.............#', '#.##.##.##.##.#', '#....#   #....#', '####.# G #.####', '#....#   #....#', '#.##.#####.##.#', '#.............#', '#.##.#.#.#.##.#', '#*.....P.....*#', '###############'];
+  const Rw = M.length, Cw = M[0].length, st = document.getElementById('gstage'), c = Math.floor(Math.min(360, window.innerWidth - 32) / Cw), Wp = Cw * c, Hp = Rw * c;
+  st.innerHTML = `<canvas id="gcv" width="${Wp}" height="${Hp}" style="display:block;margin:10px auto;border:1px solid var(--line);border-radius:10px;touch-action:none;background:var(--bg)"></canvas><div id="gscore" class="meta" style="text-align:center"></div><div style="display:grid;grid-template-columns:repeat(3,56px);gap:6px;justify-content:center;margin-top:8px"><span></span><button data-d="u">▲</button><span></span><button data-d="l">◀</button><button data-d="d">▼</button><button data-d="r">▶</button></div>`;
+  const cv = document.getElementById('gcv'), cx = cv.getContext('2d'), cs = getComputedStyle(document.documentElement);
+  const acc = cs.getPropertyValue('--accent').trim() || '#ff7a45', fg = cs.getPropertyValue('--text').trim() || '#fff';
+  let g, dots, pac, q, ghosts, score, lives, power, over, won, tickN = 0, svd = false;
+  const wallAt = (x, y) => y < 0 || y >= Rw || x < 0 || x >= Cw || g[y][x] === '#';
+  const place = () => {
+    pac = { x: 7, y: 11, dx: 0, dy: 0 }; q = { x: 0, y: 0 }; power = 0;
+    ghosts = [['#ff4d4d', 7], ['#ff9de6', 6], ['#4de1ff', 8]].map(([col, x]) => ({ col, x, y: 6, dx: 0, dy: 0 }));
+  };
+  const init = () => { g = M.map(r => r.replace('P', ' ').replace('G', ' ').split('')); dots = g.flat().filter(v => v === '.' || v === '*').length; score = 0; lives = 3; over = false; won = false; svd = false; place(); };
+  const turn = d => { q = { u: { x: 0, y: -1 }, d: { x: 0, y: 1 }, l: { x: -1, y: 0 }, r: { x: 1, y: 0 } }[d] || q; };
+  st.querySelectorAll('button[data-d]').forEach(b => b.onclick = () => turn(b.dataset.d));
+  const kk = e => { const m = { ArrowUp: 'u', ArrowDown: 'd', ArrowLeft: 'l', ArrowRight: 'r' }[e.key]; if (m) { turn(m); e.preventDefault(); } };
+  window.addEventListener('keydown', kk);
+  let sx = 0, sy = 0;
+  cv.addEventListener('touchstart', e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+  cv.addEventListener('touchend', e => { const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy; if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) { if (over) init(); return; } turn(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'r' : 'l') : (dy > 0 ? 'd' : 'u')); });
+  cv.addEventListener('click', () => { if (over) init(); });
+  const hit = () => {
+    ghosts.forEach(gh => {
+      if (over || gh.x !== pac.x || gh.y !== pac.y) return;
+      if (power > 0) { score += 200; gh.x = 7; gh.y = 6; gh.dx = gh.dy = 0; }
+      else { lives--; if (lives <= 0) over = true; else place(); }
+    });
+  };
+  const stepPac = () => {
+    if ((q.x || q.y) && !wallAt(pac.x + q.x, pac.y + q.y)) { pac.dx = q.x; pac.dy = q.y; }
+    const nx = pac.x + pac.dx, ny = pac.y + pac.dy;
+    if (!wallAt(nx, ny)) {
+      pac.x = nx; pac.y = ny; const v = g[ny][nx];
+      if (v === '.') { score += 10; dots--; g[ny][nx] = ' '; } else if (v === '*') { score += 50; dots--; power = 45; g[ny][nx] = ' '; }
+    }
+    if (dots <= 0) { won = true; over = true; }
+  };
+  const stepGhost = gh => {
+    const D = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    let opts = D.filter(([dx, dy]) => !wallAt(gh.x + dx, gh.y + dy) && !(dx === -gh.dx && dy === -gh.dy));
+    if (!opts.length) opts = D.filter(([dx, dy]) => !wallAt(gh.x + dx, gh.y + dy));
+    if (!opts.length) return;
+    const dist = ([dx, dy]) => Math.abs(gh.x + dx - pac.x) + Math.abs(gh.y + dy - pac.y);
+    const pick = power > 0 ? opts.reduce((a, b) => dist(b) > dist(a) ? b : a) : Math.random() < 0.7 ? opts.reduce((a, b) => dist(b) < dist(a) ? b : a) : opts[Math.floor(Math.random() * opts.length)];
+    gh.dx = pick[0]; gh.dy = pick[1]; gh.x += gh.dx; gh.y += gh.dy;
+  };
+  init();
+  const id = setInterval(() => {
+    if (document.getElementById('gcv') !== cv) { clearInterval(id); window.removeEventListener('keydown', kk); return; }
+    if (!over) {
+      tickN++;
+      if (tickN % 3 === 0) { stepPac(); hit(); if (power > 0) power--; }
+      if (tickN % (power > 0 ? 5 : 4) === 0) { ghosts.forEach(stepGhost); hit(); }
+    }
+    if (over && !svd) { svd = true; recHS('pacman', score); }
+    cx.clearRect(0, 0, Wp, Hp);
+    for (let y = 0; y < Rw; y++) for (let x = 0; x < Cw; x++) {
+      const v = g[y][x];
+      if (v === '#') { cx.globalAlpha = 0.4; cx.fillStyle = acc; cx.fillRect(x * c + 1, y * c + 1, c - 2, c - 2); cx.globalAlpha = 1; }
+      else if (v === '.' || v === '*') { cx.fillStyle = fg; cx.beginPath(); cx.arc(x * c + c / 2, y * c + c / 2, v === '*' ? c * 0.27 : c * 0.09, 0, 7); cx.fill(); }
+    }
+    const a = Math.atan2(pac.dy, pac.dx || (pac.dy ? 0 : 1)), mo = tickN % 6 < 3 ? 0.55 : 0.12;
+    cx.fillStyle = '#ffd34d'; cx.beginPath(); cx.moveTo(pac.x * c + c / 2, pac.y * c + c / 2); cx.arc(pac.x * c + c / 2, pac.y * c + c / 2, c / 2 - 1, a + mo, a + 2 * Math.PI - mo); cx.closePath(); cx.fill();
+    ghosts.forEach(gh => {
+      const gx = gh.x * c, gy = gh.y * c;
+      cx.fillStyle = power > 0 ? (power < 12 && tickN % 4 < 2 ? '#fff' : '#2b4cff') : gh.col;
+      cx.beginPath(); cx.arc(gx + c / 2, gy + c / 2, c / 2 - 1, Math.PI, 0); cx.lineTo(gx + c - 1, gy + c - 1); cx.lineTo(gx + 1, gy + c - 1); cx.closePath(); cx.fill();
+      cx.fillStyle = '#fff'; cx.fillRect(gx + c * 0.28, gy + c * 0.3, c * 0.15, c * 0.2); cx.fillRect(gx + c * 0.58, gy + c * 0.3, c * 0.15, c * 0.2);
+    });
+    document.getElementById('gscore').textContent = over ? `${won ? 'You win! 🎉' : 'Game over'} — score ${score}. Tap to restart` : `Score ${score} · Lives ${'❤️'.repeat(lives)}`;
+  }, 50);
+}
+function playC4(online) {
+  const st = document.getElementById('gstage'), role = online ? G.role : 'a', me = role === 'a' ? 'R' : 'Y', R = 6, C = 7;
+  let b = Array.from({ length: R }, () => Array(C).fill('')), turn = 'R', end = false, win = null;
+  const land = (bd, c) => { let r = R - 1; while (r >= 0 && bd[r][c]) r--; return r; };
+  const line4 = (bd, r, c, w) => {
+    for (const [dr, dc] of [[0, 1], [1, 0], [1, 1], [1, -1]]) {
+      const cells = [[r, c]];
+      for (const sg of [1, -1]) { let rr = r + dr * sg, cc = c + dc * sg; while (rr >= 0 && rr < R && cc >= 0 && cc < C && bd[rr][cc] === w) { cells.push([rr, cc]); rr += dr * sg; cc += dc * sg; } }
+      if (cells.length >= 4) return cells;
+    }
+    return null;
+  };
+  const draw = () => {
+    const full = b[0].every(Boolean); end = !!win || full;
+    const msg = win ? (b[win[0][0]][win[0][1]] === me ? 'You win! 🎉' : (online ? 'You lose' : 'CPU wins')) : full ? 'Draw' : (turn === me ? 'Your turn' : (online ? 'Waiting for your friend…' : 'CPU thinking…'));
+    const col = v => v === 'R' ? 'var(--accent)' : v === 'Y' ? '#ffd34d' : 'var(--bg)';
+    st.innerHTML = `<p class="meta" id="gscore" style="text-align:center">${msg} · you are ${me === 'R' ? 'orange' : 'yellow'}</p><div id="gttt" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;max-width:360px;margin:0 auto">${Array.from({ length: C }, (_, c) => `<button data-c="${c}" style="padding:4px;display:grid;gap:4px">${b.map((row, r) => `<span style="display:block;aspect-ratio:1;border-radius:50%;background:${col(row[c])};${win && win.some(([wr, wc]) => wr === r && wc === c) ? 'outline:3px solid #fff;' : ''}"></span>`).join('')}</button>`).join('')}</div>${end && !online ? '<p style="text-align:center"><button id="gagain">Play again</button></p>' : end && online ? '<p style="text-align:center"><button id="grm">🔁 Rematch</button></p>' : ''}`;
+    st.querySelectorAll('#gttt button').forEach(el => el.onclick = () => drop(+el.dataset.c, me, true));
+    const ag = document.getElementById('gagain'); if (ag) ag.onclick = () => playC4(false);
+    const rm = document.getElementById('grm'); if (rm) rm.onclick = () => rematchBtn(playC4);
+  };
+  const drop = (c, who, local) => {
+    if (end || turn !== who) return;
+    const r = land(b, c); if (r < 0) return;
+    b[r][c] = who; win = line4(b, r, c, who); turn = who === 'R' ? 'Y' : 'R';
+    if (online && local) sendGame({ op: 'move', sid: G.sid, c });
+    draw();
+    if (!online && !end && turn === 'Y') setTimeout(cpu, 500);
+  };
+  const cpu = () => {
+    if (!document.getElementById('gttt')) return;
+    const cols = [...Array(C).keys()].filter(c => land(b, c) >= 0);
+    const tryW = w => cols.find(c => { const r = land(b, c); b[r][c] = w; const ok = !!line4(b, r, c, w); b[r][c] = ''; return ok; });
+    const m = tryW('Y') ?? tryW('R') ?? [3, 2, 4, 1, 5, 0, 6].find(c => cols.includes(c) && Math.random() < 0.6) ?? cols[0];
+    if (m !== undefined) drop(m, 'Y', false);
+  };
+  if (online) G.onmsg = m => { if (m.op === 'move') drop(m.c, role === 'a' ? 'Y' : 'R', false); };
+  draw();
+}
+function playTtt(online) {
+  const st = document.getElementById('gstage'), role = online ? G.role : 'a', me = role === 'a' ? 'X' : 'O';
+  const L = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
+  let b = Array(9).fill(''), turn = 'X', end = false;
+  const win = x => L.find(l => x[l[0]] && l.every(i => x[i] === x[l[0]]));
+  const draw = () => {
+    const w = win(b), full = b.every(Boolean); end = !!w || full;
+    const msg = w ? (b[w[0]] === me ? 'You win! 🎉' : (online ? 'You lose' : 'CPU wins')) : full ? 'Draw' : (turn === me ? `Your turn (${me})` : (online ? 'Waiting for your friend…' : 'CPU thinking…'));
+    st.innerHTML = `<p class="meta" id="gscore" style="text-align:center">${msg}</p><div id="gttt" style="display:grid;grid-template-columns:repeat(3,84px);gap:8px;justify-content:center">${b.map((v, i) => `<button data-i="${i}" style="height:84px;font-size:36px;${w && w.includes(i) ? 'border-color:var(--accent);' : ''}">${v}</button>`).join('')}</div>${end && !online ? '<p style="text-align:center"><button id="gagain">Play again</button></p>' : end && online ? '<p style="text-align:center"><button id="grm">🔁 Rematch</button></p>' : ''}`;
+    st.querySelectorAll('#gttt button').forEach(el => el.onclick = () => move(+el.dataset.i, me, true));
+    const ag = document.getElementById('gagain'); if (ag) ag.onclick = () => playTtt(false);
+    const rm = document.getElementById('grm'); if (rm) rm.onclick = () => rematchBtn(playTtt);
+  };
+  const move = (i, who, local) => {
+    if (end || b[i] || turn !== who) return;
+    b[i] = who; turn = who === 'X' ? 'O' : 'X';
+    if (online && local) sendGame({ op: 'move', sid: G.sid, i });
+    draw();
+    if (!online && !end && turn === 'O') setTimeout(cpu, 450);
+  };
+  const cpu = () => {
+    if (!document.getElementById('gttt')) return;
+    const e = b.map((v, i) => v ? -1 : i).filter(i => i >= 0);
+    const t = p => e.find(i => { const x = [...b]; x[i] = p; return win(x); });
+    const m = t('O') ?? t('X') ?? (b[4] ? undefined : 4) ?? e[Math.floor(Math.random() * e.length)];
+    if (m !== undefined) move(m, 'O', false);
+  };
+  if (online) G.onmsg = m => { if (m.op === 'move') move(m.i, role === 'a' ? 'O' : 'X', false); };
+  draw();
+}
 const getCT = () => { try { const o = JSON.parse(localStorage.getItem('custom_theme') || '{}'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } };
 function applyCustomTheme() {
   const c = getCT(), st = document.documentElement.style;
@@ -410,7 +843,7 @@ function applyPosterOverrides() {
   });
 }
 let pendingImport = null;
-const buildBackup = () => ({ app: 'screenroom', v: 1, key, profile: getUserProfile(), fav: lsGet('fav'), hist: lsGet('hist'), cw: getCW(), watched: getW(), lists: getLists(), posters: getPosters(), done: lsGet('done'), wtime: getWT(), myrate: getMR() });
+const buildBackup = () => ({ app: 'screenroom', v: 1, key, profile: getUserProfile(), fav: lsGet('fav'), hist: lsGet('hist'), cw: getCW(), watched: getW(), lists: getLists(), posters: getPosters(), done: lsGet('done'), wtime: getWT(), myrate: getMR(), lb: getLB() });
 async function homeExtras() {
   if (!key || tab !== 'all') return;
   const hero0 = app.querySelector('.hero');
@@ -784,6 +1217,62 @@ function saveUserProfile(name, pfp) {
   return next;
 }
 
+function profileHeader() {
+  const p = getUserProfile();
+  let bn = ''; try { bn = localStorage.getItem(getProfileStorageKey() + '_bn') || ''; } catch (e) {}
+  const bg = !bn ? 'linear-gradient(135deg,var(--accent),var(--surface))' : bn[0] === '#' ? bn : `url('${bn}') center/cover`;
+  return `<div id="myprof" style="display:flex;flex-direction:column;align-items:center;gap:6px;margin:6px 0 18px"><div id="mybn" style="width:100%;max-width:520px;height:96px;border-radius:14px;background:${bg};cursor:pointer"></div><img id="mypfp" src="${esc(p.pfp)}" alt="Profile photo" style="margin-top:-44px;width:84px;height:84px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);cursor:pointer;background:var(--surface)"><div id="myname" dir="auto" style="font-weight:700;font-size:18px;cursor:pointer">${esc(p.name)}</div><div class="meta" style="font-size:12px">Double-tap the photo, the name or the banner to change them</div>${badgesHtml()}</div>`;
+}
+function onDouble(el, fn) {
+  let last = 0;
+  el.addEventListener('click', () => { const n = Date.now(); if (n - last < 380) { last = 0; fn(); } else last = n; });
+}
+function bindProfile() {
+  const pf = document.getElementById('mypfp'), nm = document.getElementById('myname'), bnEl = document.getElementById('mybn');
+  const setBn = v => { try { localStorage.setItem(getProfileStorageKey() + '_bn', v); } catch (e) {} listView(); };
+  if (bnEl) onDouble(bnEl, () => {
+    const v = prompt('Banner color like #ff7a45 — or leave empty to pick an image:', '');
+    if (v === null) return;
+    if (/^#[0-9a-f]{3,8}$/i.test(v.trim())) return setBn(v.trim());
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+    inp.onchange = () => {
+      const f = inp.files && inp.files[0]; if (!f) return;
+      const rd = new FileReader();
+      rd.onload = () => { const im = new Image(); im.onload = () => {
+        const c = document.createElement('canvas'); c.width = 600; c.height = 200;
+        let sw = im.width, sh = sw / 3; if (sh > im.height) { sh = im.height; sw = sh * 3; }
+        c.getContext('2d').drawImage(im, (im.width - sw) / 2, (im.height - sh) / 2, sw, sh, 0, 0, 600, 200);
+        setBn(c.toDataURL('image/jpeg', 0.8));
+      }; im.src = rd.result; };
+      rd.readAsDataURL(f);
+    };
+    inp.click();
+  });
+  if (nm) onDouble(nm, () => {
+    const v = prompt('Your name (max 24 characters):', getUserProfile().name);
+    if (v === null || !v.trim()) return;
+    saveUserProfile(v, undefined); listView();
+  });
+  if (pf) onDouble(pf, () => {
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+    inp.onchange = () => {
+      const f = inp.files && inp.files[0]; if (!f) return;
+      const rd = new FileReader();
+      rd.onload = () => {
+        const im = new Image();
+        im.onload = () => {
+          const S = 160, c = document.createElement('canvas'); c.width = c.height = S;
+          const m = Math.min(im.width, im.height), sx = (im.width - m) / 2, sy = (im.height - m) / 2;
+          c.getContext('2d').drawImage(im, sx, sy, m, m, 0, 0, S, S);
+          saveUserProfile(undefined, c.toDataURL('image/jpeg', 0.85)); listView();
+        };
+        im.src = rd.result;
+      };
+      rd.readAsDataURL(f);
+    };
+    inp.click();
+  });
+}
 function startDiscordOAuth() {
   const clientId = '1570548719110328420';
   const redirectUri = encodeURIComponent('https://coolr2loulou-source.github.io/screenroom/');
@@ -918,6 +1407,7 @@ function updatePartyUI() {
       <div style="display:flex;align-items:center;gap:4px">
         <input id="synctime-in" type="text" placeholder="MM:SS" style="width:65px;padding:5px 8px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:13px" title="Enter minute:second to sync all friends">
         <button id="syncnow" title="Force all friends to jump to this timestamp & episode">⚡ Sync Time</button>
+        <button id="startall" title="Reload everyone's player at your current time, then a countdown so everyone taps play together">▶ Start together</button>
       </div>
       <button id="leaveparty">End Party</button>${profileHtml}`;
     bindProfileControls();
@@ -927,6 +1417,17 @@ function updatePartyUI() {
         ev.target.textContent = '✅ Copied!';
         setTimeout(() => { if (ev.target) ev.target.textContent = '📋 Copy Discord Link'; }, 2500);
       } catch (e) { prompt('Copy this invite link for Discord:', getPartyUrl()); }
+    };
+    document.getElementById('startall').onclick = ev => {
+      if (!current) return;
+      const btn = ev.currentTarget, T = Math.floor(party.lastTime || 0), ms = 7000;
+      party.lastTime = T; party.lastTimeAt = 0; party.lastState = 'paused'; party.lastCorrect = Date.now();
+      const hf = document.getElementById('frame');
+      if (hf) hf.src = getEmbedUrl(playerProv, current.type, current.id, current.s || 1, current.e || 1, T);
+      const payload = { type: 'go', ms, t: T, id: current.id, mediaType: current.type, s: current.s || 1, e: current.e || 1, prov: playerProv };
+      party.conns.forEach(c => { if (c.open) try { c.send(payload); } catch (e) {} });
+      partyGo(ms);
+      btn.textContent = '▶ Started!'; setTimeout(() => { btn.textContent = '▶ Start together'; }, 2500);
     };
     document.getElementById('syncnow').onclick = ev => {
       const val = document.getElementById('synctime-in').value.trim();
@@ -1014,6 +1515,7 @@ function startWatchParty() {
   leaveWatchParty();
   const roomId = 'sr-' + Math.random().toString(36).slice(2, 8) + '-' + Date.now().toString(36).slice(-4);
   party = newParty({ active: true, role: 'host', roomId, lastState: 'playing' });
+  try { localStorage.setItem('badge_party', '1'); } catch (e) {}
   updatePartyUI();
   const peer = new Peer(roomId, PEER_CFG);
   party.peer = peer;
@@ -1032,6 +1534,7 @@ function startWatchParty() {
     conn.on('data', msg => {
       if (!msg) return;
       if (msg.type === 'req_sync') broadcastPartyState(true);
+      else if (msg.type === 'game') { handleGameMsg(msg); party.conns.forEach(o => { if (o !== conn && o.open) try { o.send(msg); } catch (e) {} }); }
       else if (msg.type === 'chat') {
         appendChatMessage(msg, false);
         party.conns.forEach(other => { if (other !== conn && other.open) try { other.send(msg); } catch (e) {} });
@@ -1055,6 +1558,7 @@ function joinWatchParty(roomId) {
   if (typeof Peer === 'undefined') return;
   leaveWatchParty();
   party = newParty({ active: true, role: 'guest', roomId, lastState: 'playing' });
+  try { localStorage.setItem('badge_party', '1'); } catch (e) {}
   updatePartyUI();
   const peer = new Peer(PEER_CFG);
   party.peer = peer;
@@ -1073,6 +1577,7 @@ function joinWatchParty(roomId) {
       opened = true; party.retry = 0;
       updatePartyUI();
       conn.send({ type: 'req_sync' });
+      shareScores(true);
       const prof = getUserProfile();
       appendChatMessage({ sys: true, text: `Connected to party chat as ${prof.name}` }, true);
     });
@@ -1080,6 +1585,8 @@ function joinWatchParty(roomId) {
       if (!msg) return;
       if (msg.type === 'sync') applyHostSync(msg);
       else if (msg.type === 'chat') appendChatMessage(msg, false);
+      else if (msg.type === 'game') handleGameMsg(msg);
+      else if (msg.type === 'go') applyGo(msg);
       else if (msg.type === 'history' && Array.isArray(msg.msgs)) msg.msgs.forEach(m => appendChatMessage(m, false));
     });
     conn.on('close', retry);
@@ -1102,6 +1609,32 @@ document.addEventListener('visibilitychange', () => {
   } else if (party.peer && party.peer.disconnected) { try { party.peer.reconnect(); } catch (e) {} }
 });
 
+function partyGo(ms) {
+  const old = document.getElementById('pgo'); if (old) old.remove();
+  const o = document.createElement('div'); o.id = 'pgo';
+  o.style.cssText = 'position:fixed;left:0;right:0;top:16%;z-index:9999;text-align:center;pointer-events:none;font:900 88px/1 sans-serif;color:#fff;text-shadow:0 4px 24px rgba(0,0,0,.85)';
+  document.body.appendChild(o);
+  const t0 = performance.now(); let lastN = -1;
+  const iv = setInterval(() => {
+    const left = ms - (performance.now() - t0), n = Math.ceil(left / 1000);
+    if (left > 0) {
+      if (n !== lastN) { lastN = n; o.innerHTML = `<div>${n}</div><div style="font-size:16px;font-weight:700">Get ready to tap ▶ on the player</div>`; try { navigator.vibrate && navigator.vibrate(30); } catch (e) {} }
+    } else if (left > -2000) { o.innerHTML = '<div style="color:var(--accent);font-size:52px">▶ PLAY NOW!</div>'; }
+    else { clearInterval(iv); o.remove(); }
+  }, 50);
+}
+function applyGo(m) {
+  if (!current || party.role !== 'guest') return;
+  const t = Math.max(0, Math.floor(+m.t || 0)), ms = Math.min(15000, Math.max(2000, +m.ms || 7000));
+  if (m.prov && ['vidyst', 'multiembed', 'vidsrc'].includes(m.prov)) { playerProv = m.prov; const ps = document.getElementById('provsel'); if (ps) ps.value = playerProv; }
+  if (String(current.id) !== String(m.id) || current.type !== m.mediaType) watch(m.mediaType, m.id, { s: m.s, e: m.e, t }, true);
+  else {
+    if (current.type === 'tv') { current.s = m.s; current.e = m.e; const en = document.getElementById('epnow'); if (en) en.textContent = `Now playing: S${m.s} E${m.e}`; if (epRedraw) epRedraw(); }
+    const f = document.getElementById('frame'); if (f) f.src = getEmbedUrl(playerProv, current.type, current.id, current.s, current.e, t);
+  }
+  party.lastTime = t; party.lastTimeAt = 0; party.lastCorrect = Date.now(); party.synced = true;
+  partyGo(ms);
+}
 function partyCountdown(t) {
   const nb = document.getElementById('next'); if (!nb) return;
   clearInterval(nextTimer); clearInterval(window.__pcd);
@@ -1271,6 +1804,7 @@ async function home(fromBack = false) {
   activeView = { kind: 'home', tab, filt: { ...filt } };
   updateBackVisibility();
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  if (tab === 'games') return gamesView();
   if (tab === 'list') return listView();
   if (tab === 'upcoming') return upcomingView();
   app.innerHTML = skel();
@@ -1500,6 +2034,7 @@ function backupBox() {
     <div class="theme-opts" style="flex-wrap:wrap;gap:8px">
       ${Object.keys(THEMES).map(k => { const t = THEMES[k] || { bg: '#141922', text: '#ece9e2', accent: '#ff7a45' }; return `<button class="tpre" data-p="${k}" style="background:${t.bg};color:${t.text};border:2px solid ${t.accent};border-radius:999px;padding:6px 14px;text-transform:capitalize">${k === 'default' ? 'Classic' : k}</button>`; }).join('')}
       <button id="tprand">🎲 Random</button>
+      <button id="thshare">📤 Share theme</button><button id="thuse">📥 Use code</button>
       <button id="fxtoggle">${localStorage.getItem('fx') === '0' ? '✨ Effects: off' : '✨ Effects: on'}</button>
     </div>
     <p class="meta" style="margin-top:12px">Custom colors</p>
@@ -1645,6 +2180,23 @@ function bindBackup() {
     fxt.textContent = off ? '✨ Effects: off' : '✨ Effects: on';
     applyFx(THEMES[localStorage.getItem('preset') || '']);
   };
+  const K6 = ['bg', 'surface', 'line', 'text', 'muted', 'accent'];
+  const thshare = document.getElementById('thshare'), thuse = document.getElementById('thuse');
+  if (thshare) thshare.onclick = () => {
+    const cs = getComputedStyle(document.documentElement), v = K6.map(k => cs.getPropertyValue('--' + k).trim());
+    if (!v.every(x => /^#[0-9a-f]{6}$/i.test(x))) { alert('Could not read the colors. Pick one of the themes first.'); return; }
+    const code = 'SR1-' + v.map(x => x.slice(1)).join('-');
+    try { navigator.clipboard.writeText(code); } catch (e) {}
+    prompt('Your theme code (copied if possible):', code);
+  };
+  if (thuse) thuse.onclick = () => {
+    const c = (prompt('Paste a theme code (SR1-…):') || '').trim(); if (!c) return;
+    const m = c.match(/^SR1-((?:[0-9a-f]{6}-){5}[0-9a-f]{6})$/i);
+    if (!m) { alert('Invalid code.'); return; }
+    const t = {}; m[1].split('-').forEach((x, i) => { t[K6[i]] = '#' + x; });
+    try { localStorage.setItem('theme_code', JSON.stringify(t)); localStorage.setItem('preset', 'custom'); localStorage.setItem('theme', 'dark'); } catch (e) {}
+    applyPreset('custom');
+  };
   const trand = document.getElementById('tprand');
   if (trand) trand.onclick = () => { const ks = Object.keys(THEMES).filter(k => k !== 'default'); document.querySelector(`.tpre[data-p="${ks[Math.floor(Math.random() * ks.length)]}"]`).click(); };
   const saveCT = (k, v) => { const c = getCT(); if (v) c[k] = v; else delete c[k]; try { localStorage.setItem('custom_theme', JSON.stringify(c)); } catch (e) {} applyCustomTheme(); };
@@ -1742,6 +2294,7 @@ function bindBackup() {
         if (Array.isArray(d.done)) lsSet('done', [...new Set([...lsGet('done'), ...d.done.filter(x => typeof x === 'string')])]);
         if (d.wtime && typeof d.wtime === 'object') { const w = getWT(); ['movie', 'tv'].forEach(k => { w[k] = Math.max(+w[k] || 0, +d.wtime[k] || 0); }); try { localStorage.setItem('wtime', JSON.stringify(w)); } catch (e2) {} }
         if (d.myrate && typeof d.myrate === 'object' && !Array.isArray(d.myrate)) { try { localStorage.setItem('myrate', JSON.stringify({ ...d.myrate, ...getMR() })); } catch (e2) {} }
+        if (d.lb && typeof d.lb === 'object' && !Array.isArray(d.lb)) Object.keys(d.lb).forEach(n => mergeLB(n, d.lb[n]));
         if (d.key && !key) { key = String(d.key); try { localStorage.setItem('tmdb_key', key); } catch (e) {} }
         if (d.profile && typeof d.profile === 'object') saveUserProfile(d.profile.name, d.profile.pfp);
         if (tab === 'list') listView(); else if (key) home();
@@ -1786,7 +2339,8 @@ function listView() {
   const listsHtml = Object.keys(customLists).map(n => sec(esc(n), filterList((customLists[n] || []).filter(x => !isBlocked(x.type, x.id))), `<button class="dellist" data-n="${esc(n)}">Delete list</button>`)).join('');
   const body = statsDashboard() + filterHeader + listsHtml + sec('Favorites', favList) + sec('History', histList, '<button id="clr">Clear history</button>')
     || statsDashboard() + filterHeader + emptyState('Your list is empty', 'Open a title and tap “♡ Add to my list” to keep it here.');
-  app.innerHTML = body + backupBox();
+  app.innerHTML = profileHeader() + body + backupBox();
+  bindProfile();
   bindCards();
   bindBackup();
   
@@ -2008,6 +2562,7 @@ async function watch(type, id, res = {}, fromBack = false) {
         ${directorOrCreator ? `<p class="meta"><b>${type === 'movie' ? 'Director' : 'Creator'}:</b> <span id="dir-link" style="color:var(--accent);cursor:pointer;text-decoration:underline">${esc(directorOrCreator)}</span></p>` : ''}
         ${financialTxt ? `<p class="meta">${esc(financialTxt)}</p>` : ''}
         <div id="mystars" class="meta" style="margin:6px 0"></div>
+        <div id="wherebox"></div>
         ${(() => { const src = (type === 'tv' ? d.networks : d.production_companies) || []; const l = src.filter(x => x.logo_path).slice(0, 4); return l.length ? `<div class="studios">${l.map(x => `<img loading="lazy" src="${IMG}w185${x.logo_path}" alt="${esc(x.name)}" title="${esc(x.name)}">`).join('')}</div>` : ''; })()}
         <div class="chips">
           ${(d.genres || []).map(g => `<span class="chip" data-gid="${g.id}">${esc(g.name)}</span>`).join('')}
@@ -2104,6 +2659,7 @@ async function watch(type, id, res = {}, fromBack = false) {
       });
     };
     paintStars();
+    loadProviders(type, id);
     document.getElementById('sandbtn').onclick = showSandbox;
     document.getElementById('sleepbtn').onclick = ev => {
       const btn = ev.currentTarget; clearTimeout(window.__sleepT);
@@ -2434,6 +2990,13 @@ function showNext(s, e) {
 }
 
 const PATCHNOTES = [
+  { v: '53', c: ['Watch Party: emoji reactions that float up on everyone’s screen. Games: Rematch button after online Pong, Tic-Tac-Toe and Connect 4; Rhythm now has 3 songs (different tempos) and easy / normal / hard. Profile: badges and a custom banner (color or image). Title pages: where to watch (streaming providers). Themes: share your colors with a code, and paste a friend’s code.'] },
+  { v: '52', c: ['Watch Party: new ▶ Start together button for the host. It reloads everyone’s player at your current time and shows a big 7-second countdown on every screen, so everyone taps play at the same moment.'] },
+  { v: '51', c: ['My list now shows your profile photo with your name under it. Double-tap the photo to pick a new one from your gallery, double-tap the name to rename yourself.'] },
+  { v: '50', c: ['Games leaderboard: your best scores in Snake, Pac-Man and Rhythm are saved with your profile (TMDB key / Discord name). In a Watch Party everyone’s scores are shared live and kept, and they are included in your backup.'] },
+  { v: '49', c: ['Games: new Rhythm game (Friday-Night-Funkin style). Options to center the bars (middlescroll) and to put them down (downscroll).'] },
+  { v: '48', c: ['Games: Pac-Man (solo, 3 ghosts, power pellets, 3 lives) and Connect 4 (vs CPU or vs a friend in your Watch Party).'] },
+  { v: '47', c: ['New Games tab: Snake, Pong and Tic-Tac-Toe. Play solo or against the CPU, or challenge a friend from your Watch Party (they get a Join pop-up wherever they are in the app).'] },
   { v: '46', c: ['Watch Party “Sync Time” fixed: the host player now jumps too (before, it kept sending its old time and pulled everyone back), guests always jump to the typed time, and a 5-second countdown tells everyone when to tap play together. Leave the box empty to sync everyone to your current time. Play/pause by the host no longer restarts friends’ players.'] },
   { v: '45', c: ['Quick ♡ on every poster: tap to add or remove a title from My list without opening it. New 🎁 My Wrapped card in My list: your hours, days watched, completed titles and top-rated picks.'] },
   { v: '44', c: ['Rate titles with your own 5 stars (sort My list by My rating). Mood buttons on Home (Comedy, Horror, Romance…). Daily watching streak 🔥 in your stats. A secret surprise: tap the logo 7 times, or try the Konami code on a keyboard.'] },
