@@ -185,6 +185,9 @@ body.theater nav{display:none}
 .eb .meta{margin:0}
 .ov{margin:8px 0 0;font-size:14px;opacity:.85;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
 .ov.open{display:block}
+body.nospoil .epc:not(.rev):not(:has(.wbtn.on)) .still img{filter:blur(14px)}
+body.nospoil .epc:not(.rev):not(:has(.wbtn.on)) .ov,body.nospoil .epc:not(.rev):not(:has(.wbtn.on)) h3{filter:blur(6px)}
+.card{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .more{background:none;border:0;color:var(--accent);padding:4px 0;font-size:13px;align-self:flex-start;cursor:pointer}
 .ea{margin-top:auto;display:flex;justify-content:flex-end;padding-top:8px}
 .wbtn{width:34px;height:34px;padding:0;border-radius:50%}
@@ -294,7 +297,7 @@ body.theater #next{position:fixed;left:50%;transform:translateX(-50%);bottom:cal
 <p class="attr">This product uses the TMDB API but is not endorsed or certified by TMDB. <span id="contact"></span></p>
 
 <script>
-const APP_VERSION = '55';
+const APP_VERSION = '61';
 const IMG = 'https://image.tmdb.org/t/p/';
 const app = document.getElementById('app');
 const q = document.getElementById('q');
@@ -337,6 +340,10 @@ function applyFx(t) {
   }
   document.body.appendChild(d);
 }
+function isLightNow() {
+  const h = new Date().getHours();
+  return localStorage.getItem('theme') === 'light' || (localStorage.getItem('autotheme') === '1' && h >= 7 && h < 19);
+}
 function applyPreset(name) {
   if (name === 'custom') { try { THEMES.custom = JSON.parse(localStorage.getItem('theme_code')); } catch (e) {} }
   const st = document.documentElement.style, keys = ['bg', 'surface', 'line', 'text', 'muted', 'accent'];
@@ -345,7 +352,7 @@ function applyPreset(name) {
   if (t) { document.body.classList.remove('light'); keys.forEach(k => st.setProperty('--' + k, t[k])); }
   else {
     const a = localStorage.getItem('accent'); if (a) st.setProperty('--accent', a);
-    if (localStorage.getItem('theme') === 'light') document.body.classList.add('light');
+    if (isLightNow()) document.body.classList.add('light');
   }
   applyCustomTheme();
   applyFx(t);
@@ -393,7 +400,48 @@ const sendGame = m => {
   if (party.role === 'host') party.conns.forEach(c => { if (c.open) try { c.send(o); } catch (e) {} });
   else if (party.hostConn && party.hostConn.open) try { party.hostConn.send(o); } catch (e) {}
 };
+let hub = { vote: null, queue: [] };
+const hubMe = Math.random().toString(36).slice(2, 7);
+function hubStart() {
+  const pool = (hub.queue.length > 1 ? hub.queue : lsGet('fav').filter(x => !isDone(x.type, x.id) && !isBlocked(x.type, x.id))).slice();
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  const opts = pool.slice(0, 4).map(x => ({ type: x.type, id: x.id, name: x.name, poster: x.poster || '' }));
+  if (opts.length < 2) { alert('Add at least 2 titles to your list or to the party queue first.'); return; }
+  hub.vote = { vid: Math.random().toString(36).slice(2, 7), opts, votes: {}, done: false };
+  sendGame({ op: 'hubstart', vote: hub.vote }); openHub();
+}
+function hubMsg(m) {
+  const v = hub.vote;
+  if (m.op === 'hubstart') hub.vote = m.vote;
+  else if (m.op === 'hubcast' && v && v.vid === m.vid && !v.done) v.votes[m.voter] = m.idx;
+  else if (m.op === 'hubend' && v && v.vid === m.vid) v.done = true;
+  else if (m.op === 'hubq') { if (!hub.queue.some(x => same(x, m.item.type, m.item.id))) hub.queue.push(m.item); }
+  else if (m.op === 'hubqdel') hub.queue = hub.queue.filter(x => !same(x, m.t, m.i));
+  if (m.op === 'hubstart' || document.getElementById('hubm')) openHub();
+}
+function openHub() {
+  let m = document.getElementById('hubm');
+  if (!m) { m = document.createElement('div'); m.id = 'hubm'; m.className = 'modal'; m.onclick = e => { if (e.target === m) m.remove(); }; document.body.appendChild(m); }
+  const v = hub.vote, cnt = i => v ? Object.values(v.votes).filter(x => x === i).length : 0;
+  const best = v ? v.opts.map((_, i) => cnt(i)).reduce((b, c, i, a) => (c > a[b] ? i : b), 0) : 0;
+  const hist = lsGet('party_hist').slice(0, 8);
+  m.innerHTML = '<div class="box"><div class="hd"><h2 class="sec">🍿 Party hub</h2><button id="hubx">✕</button></div><h3>🗳 Vote for the next title</h3>' +
+    (v ? v.opts.map((x, i) => `<div style="margin:6px 0"><button data-vi="${i}"${v.done ? ' disabled' : ''}>${v.votes[hubMe] === i ? '✅ ' : ''}${esc(x.name)} — ${cnt(i)}</button>${v.done && i === best ? ` 🏆 <button data-w="${i}">▶ Open</button>` : ''}</div>`).join('') + (v.done ? '' : '<button id="hubend">Close vote</button> ') : '') +
+    `<button id="hubnew">${v && !v.done ? 'New vote' : 'Start a vote'}</button><h3>📋 Party queue</h3>` +
+    (hub.queue.length ? hub.queue.map((x, i) => `<div style="margin:6px 0"><button data-qw="${i}">▶ ${esc(x.name)}</button> <button data-qd="${i}">✕</button></div>`).join('') : '<p class="meta">Empty. On a title page, tap “➕ Party queue”.</p>') +
+    '<h3>🕒 Watched together</h3>' + (hist.length ? hist.map(x => `<p class="meta">${new Date(x.d).toLocaleDateString()} · ${esc(x.name)}</p>`).join('') : '<p class="meta">Nothing yet.</p>') + '</div>';
+  m.querySelector('#hubx').onclick = () => m.remove();
+  m.querySelector('#hubnew').onclick = hubStart;
+  const he = m.querySelector('#hubend'); if (he) he.onclick = () => { v.done = true; sendGame({ op: 'hubend', vid: v.vid }); openHub(); };
+  m.querySelectorAll('[data-vi]').forEach(b => { b.onclick = () => { v.votes[hubMe] = +b.dataset.vi; sendGame({ op: 'hubcast', vid: v.vid, voter: hubMe, idx: +b.dataset.vi }); openHub(); }; });
+  m.querySelectorAll('[data-w]').forEach(b => { b.onclick = () => { const x = v.opts[+b.dataset.w]; m.remove(); watch(x.type, x.id); }; });
+  m.querySelectorAll('[data-qw]').forEach(b => { b.onclick = () => { const x = hub.queue[+b.dataset.qw]; m.remove(); watch(x.type, x.id); }; });
+  m.querySelectorAll('[data-qd]').forEach(b => { b.onclick = () => { const x = hub.queue[+b.dataset.qd]; hub.queue = hub.queue.filter(y => y !== x); sendGame({ op: 'hubqdel', t: x.type, i: x.id }); openHub(); }; });
+}
+const reactCount = {};
 function showReact(e) {
+  const em = String(e || '').slice(0, 4); reactCount[em] = (reactCount[em] || 0) + 1;
+  const rc = document.querySelector('#preact [data-e="' + em + '"] small'); if (rc) rc.textContent = reactCount[em];
   const el = document.createElement('div'); el.textContent = String(e || '').slice(0, 4);
   el.style.cssText = `position:fixed;left:${15 + Math.random() * 70}%;bottom:25%;font-size:44px;z-index:9998;pointer-events:none;animation:rise 2.2s ease-out forwards`;
   document.body.appendChild(el); setTimeout(() => el.remove(), 2300);
@@ -402,10 +450,14 @@ function ensureReactBar() {
   let bar = document.getElementById('preact');
   if (!party.active) { if (bar) bar.remove(); return; }
   if (bar) return;
+  for (const k in reactCount) delete reactCount[k];
+  hub = { vote: null, queue: [] };
   bar = document.createElement('div'); bar.id = 'preact';
   bar.style.cssText = 'position:fixed;left:8px;bottom:150px;z-index:240;display:flex;flex-direction:column;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 4px';
-  bar.innerHTML = ['😂', '😱', '❤️', '👏', '🔥'].map(e => `<button style="background:none;border:0;font-size:22px;padding:2px 6px">${e}</button>`).join('');
-  bar.querySelectorAll('button').forEach(b => b.onclick = () => { showReact(b.textContent); sendGame({ op: 'react', emoji: b.textContent }); });
+  bar.innerHTML = ['😂', '😱', '❤️', '👏', '🔥'].map(e => `<button data-e="${e}" style="background:none;border:0;font-size:22px;padding:2px 6px">${e}<small style="display:block;font-size:10px;line-height:1;min-height:10px"></small></button>`).join('');
+  bar.querySelectorAll('button').forEach(b => b.onclick = () => { showReact(b.dataset.e); sendGame({ op: 'react', emoji: b.dataset.e }); });
+  const hb = document.createElement('button'); hb.textContent = '🍿'; hb.title = 'Party hub: vote, queue, history';
+  hb.style.cssText = 'background:none;border:0;font-size:22px;padding:2px 6px'; hb.onclick = openHub; bar.appendChild(hb);
   document.body.appendChild(bar);
 }
 const _upu = updatePartyUI; updatePartyUI = function () { _upu.apply(this, arguments); ensureReactBar(); };
@@ -453,6 +505,7 @@ function renderBoard(g) {
 }
 function handleGameMsg(m) {
   if (m.op === 'react') { showReact(m.emoji); return; }
+  if (typeof m.op === 'string' && m.op.indexOf('hub') === 0) { hubMsg(m); return; }
   if (m.op === 'readyq') {
     if (party.role !== 'guest') return;
     const old = document.getElementById('gtoast'); if (old) old.remove();
@@ -498,10 +551,11 @@ function handleGameMsg(m) {
     else if (G.onmsg) G.onmsg(m);
   }
 }
+const gameSoundOn = () => { try { return localStorage.getItem('game_sound') !== '0'; } catch (e) { return true; } };
 function gamesView() {
   updateBackVisibility(); clearHash(); G = null;
   const fr = g => party.active ? `<button data-g="${g}" data-m="online">👥 vs friend</button>` : '<button disabled title="Host or join a party first">👥 vs friend</button>';
-  app.innerHTML = `<div class="row"><div class="hd"><h2 class="sec">Games</h2></div>
+  app.innerHTML = `<div class="row"><div class="hd"><h2 class="sec">Games</h2><div><button id="glast" style="margin-right:8px"></button><button id="gsnd"></button></div></div>
     <p class="meta">Play alone, or against a friend in your Watch Party.</p>
     <div class="gmenu">
       <div class="gcard"><div class="gi">🐍</div><b>Snake</b><div><button data-g="snake" data-m="solo">Play</button></div></div>
@@ -512,16 +566,28 @@ function gamesView() {
       <div class="gcard"><div class="gi">🎤</div><b>Rhythm</b><div><button data-g="fnf" data-m="solo">Play</button></div></div>
       <div class="gcard"><div class="gi">🔢</div><b>2048</b><div><button data-g="g2048" data-m="solo">Play</button></div></div>
       <div class="gcard"><div class="gi">🧠</div><b>Memory</b><div><button data-g="memory" data-m="solo">Play</button></div></div>
+      <div class="gcard"><div class="gi">🐤</div><b>Flappy</b><div><button data-g="flappy" data-m="solo">Play</button></div></div>
+      <div class="gcard"><div class="gi">💣</div><b>Minesweeper</b><div><button data-g="mines" data-m="solo">Play</button></div></div>
     </div><div id="gstage"></div><div id="gboard" class="row"></div></div>`;
   renderBoard();
+  const gsnd = document.getElementById('gsnd');
+  const gsndLbl = () => { gsnd.textContent = gameSoundOn() ? '🔊 Sound on' : '🔇 Sound off'; };
+  gsndLbl();
+  gsnd.onclick = () => { try { localStorage.setItem('game_sound', gameSoundOn() ? '0' : '1'); } catch (e) {} gsndLbl(); };
+  const GN = { snake: '🐍 Snake', pong: '🏓 Pong', ttt: '❌⭕ Tic-Tac-Toe', pacman: '🟡 Pac-Man', c4: '🔴 Connect 4', fnf: '🎤 Rhythm', g2048: '🔢 2048', memory: '🧠 Memory', flappy: '🐤 Flappy', mines: '💣 Minesweeper' };
+  const glast = document.getElementById('glast'); let lg = null; try { lg = localStorage.getItem('last_game'); } catch (e) {}
+  if (lg && GN[lg]) { glast.textContent = '▶ ' + GN[lg]; glast.onclick = () => { const bt = app.querySelector('[data-g="' + lg + '"]'); if (bt) bt.click(); }; } else glast.remove();
   app.querySelectorAll('[data-g]').forEach(b => b.onclick = () => {
     const g = b.dataset.g, mode = b.dataset.m;
     G = null;
+    try { localStorage.setItem('last_game', g); } catch (ex) {}
     if (g === 'snake') playSnake();
     else if (g === 'pacman') playPacman();
     else if (g === 'fnf') playFnf();
     else if (g === 'g2048') play2048();
     else if (g === 'memory') playMemory();
+    else if (g === 'flappy') playFlappy();
+    else if (g === 'mines') playMines();
     else if (mode === 'online') {
       const sid = Math.random().toString(36).slice(2, 8);
       G = { game: g, role: 'a', sid, wait: true };
@@ -530,6 +596,59 @@ function gamesView() {
     } else playFn(g)(false);
     document.getElementById('gstage').scrollIntoView({ behavior: 'smooth' });
   });
+}
+function playFlappy() {
+  const st = document.getElementById('gstage'), W = Math.min(360, window.innerWidth - 32), H = 440;
+  st.innerHTML = `<canvas id="gcv" width="${W}" height="${H}" style="display:block;margin:10px auto;border:1px solid var(--line);border-radius:10px;touch-action:none;background:var(--bg)"></canvas><div id="gscore" class="meta" style="text-align:center"></div>`;
+  const cv = document.getElementById('gcv'), cx = cv.getContext('2d'), acc = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#ff7a45';
+  let best = +localStorage.getItem('flappy_best') || 0, y, vy, pipes, score, dead, run, fr;
+  const reset = () => { y = H / 2; vy = 0; pipes = []; score = 0; dead = false; run = false; fr = 0; };
+  const flap = () => { if (dead) { reset(); return; } run = true; vy = -6.2; };
+  const kk = e => { if (e.code === 'Space') { e.preventDefault(); flap(); } };
+  window.addEventListener('keydown', kk); cv.addEventListener('pointerdown', e => { e.preventDefault(); flap(); });
+  reset();
+  const id = setInterval(() => {
+    if (document.getElementById('gcv') !== cv) { clearInterval(id); window.removeEventListener('keydown', kk); return; }
+    if (run && !dead) {
+      fr++; vy += 0.38; y += vy;
+      if (fr % 90 === 1) pipes.push({ x: W, gap: 60 + Math.random() * (H - 220), s: false });
+      pipes.forEach(p => { p.x -= 2.4; });
+      pipes = pipes.filter(p => p.x > -50);
+      pipes.forEach(p => { if (!p.s && p.x + 40 < 70) { p.s = true; score++; } if (81 > p.x && 59 < p.x + 40 && (y - 11 < p.gap || y + 11 > p.gap + 130)) dead = true; });
+      if (y < 0 || y > H) dead = true;
+      if (dead && score > best) { best = score; try { localStorage.setItem('flappy_best', best); } catch (e) {} }
+    }
+    cx.clearRect(0, 0, W, H); cx.fillStyle = acc;
+    pipes.forEach(p => { cx.fillRect(p.x, 0, 40, p.gap); cx.fillRect(p.x, p.gap + 130, 40, H - p.gap - 130); });
+    cx.beginPath(); cx.arc(70, y, 11, 0, Math.PI * 2); cx.fillStyle = '#ffd34d'; cx.fill();
+    document.getElementById('gscore').textContent = dead ? `💥 Game over · ${score} · best ${best} — tap to retry` : run ? `Score ${score} · best ${best}` : `Tap / Space to flap · best ${best}`;
+  }, 16);
+}
+function playMines() {
+  const st = document.getElementById('gstage'), N = 9, M = 10, c = Math.floor(Math.min(360, window.innerWidth - 32) / N);
+  let g, flagMode = false, over, first;
+  const nb = i => { const x = i % N, y = (i / N) | 0, r = []; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const a = x + dx, b = y + dy; if ((dx || dy) && a >= 0 && b >= 0 && a < N && b < N) r.push(b * N + a); } return r; };
+  const place = s => { let k = 0; while (k < M) { const i = Math.floor(Math.random() * N * N); if (i === s || nb(s).includes(i) || g[i].m) continue; g[i].m = true; k++; } g.forEach((q, i) => { q.n = nb(i).filter(j => g[j].m).length; }); };
+  const open = i => { const q = g[i]; if (q.o || q.f) return; q.o = true; if (!q.m && !q.n) nb(i).forEach(open); };
+  const tap = i => {
+    if (over) return; const q = g[i];
+    if (flagMode) { if (!q.o) q.f = !q.f; }
+    else {
+      if (q.f || q.o) return;
+      if (first) { place(i); first = false; }
+      open(i);
+      if (q.m) { over = 'lose'; g.forEach(z => { if (z.m) z.o = true; }); } else if (g.filter(z => z.o).length === N * N - M) over = 'win';
+    }
+    draw();
+  };
+  const draw = () => {
+    const fl = g.filter(z => z.f).length;
+    st.innerHTML = `<div class="meta" style="text-align:center">💣 ${M - fl} ${over === 'win' ? '· 🎉 You win!' : over ? '· 💥 Boom!' : ''}</div><div id="gttt" style="display:grid;grid-template-columns:repeat(${N},${c}px);gap:2px;justify-content:center;margin:10px auto">${g.map((q, i) => `<button data-i="${i}" style="width:${c}px;height:${c}px;padding:0;font-size:${Math.round(c * 0.5)}px;${q.o ? 'background:var(--bg);' : ''}">${q.o ? (q.m ? '💣' : q.n || '') : q.f ? '🚩' : ''}</button>`).join('')}</div><div style="text-align:center"><button id="mflag">${flagMode ? '🚩 Flag mode' : '👆 Dig mode'}</button> <button id="gagain">New game</button></div>`;
+    st.querySelectorAll('#gttt button').forEach(b => { b.onclick = () => tap(+b.dataset.i); });
+    document.getElementById('mflag').onclick = () => { flagMode = !flagMode; draw(); };
+    document.getElementById('gagain').onclick = playMines;
+  };
+  g = Array.from({ length: N * N }, () => ({ m: false, o: false, f: false, n: 0 })); over = ''; first = true; draw();
 }
 function playSnake() {
   const st = document.getElementById('gstage'), N = 18, c = Math.floor(Math.min(360, window.innerWidth - 32) / N), Z = N * c;
@@ -596,24 +715,57 @@ function playPong(online) {
     if (over) { const won = role === 'a' ? sa > sb : sb > sa; cx.font = 'bold 26px sans-serif'; cx.fillText(won ? 'You win! 🎉' : 'You lose', W / 2, H / 2); { cx.font = '14px sans-serif'; cx.fillText(online ? 'Tap for a rematch' : 'Tap to play again', W / 2, H / 2 + 26); } }
   }, 16);
 }
+function fnfAnalyze(buf, diff) {
+  const d = buf.getChannelData(0), sr = buf.sampleRate, hop = 1024, n = Math.min(Math.floor(d.length / hop) - 1, Math.floor(120 * sr / hop));
+  const en = new Float32Array(Math.max(n, 0)), zc = new Float32Array(Math.max(n, 0));
+  for (let i = 0; i < n; i++) {
+    let e = 0, z = 0;
+    for (let j = i * hop; j < (i + 1) * hop; j++) { const v = d[j]; e += v * v; if (j > 0 && (v >= 0) !== (d[j - 1] >= 0)) z++; }
+    en[i] = Math.sqrt(e / hop); zc[i] = z / hop;
+  }
+  const gap = (({ easy: 450, normal: 280, hard: 170 }[diff] || 280) / 1000) * sr / hop, out = []; let last = -1e9;
+  for (let i = 3; i < n - 1; i++) {
+    let m = 0; const from = Math.max(0, i - 20); for (let k = from; k < i; k++) m += en[k]; m /= (i - from);
+    if (en[i] > en[i - 1] && en[i] >= en[i + 1] && en[i] > m * 1.25 && en[i] - en[i - 1] > m * 0.1 && i - last >= gap) { out.push({ t: i * hop / sr * 1000, z: zc[i] }); last = i; }
+  }
+  if (out.length < 4) return out.map(o => ({ t: o.t, lane: 0 }));
+  const zs = out.map(o => o.z).sort((a, b) => a - b), q = [zs[Math.floor(zs.length * 0.25)], zs[Math.floor(zs.length * 0.5)], zs[Math.floor(zs.length * 0.75)]];
+  return out.map(o => ({ t: o.t, lane: o.z < q[0] ? 0 : o.z < q[1] ? 1 : o.z < q[2] ? 2 : 3 }));
+}
 function playFnf() {
   const st = document.getElementById('gstage');
   const opt = { mid: localStorage.getItem('fnf_mid') === '1', down: localStorage.getItem('fnf_down') === '1', diff: localStorage.getItem('fnf_diff') || 'normal', song: +localStorage.getItem('fnf_song') || 0 };
   const SONGS = [{ n: 'Chill — 90 BPM', bpm: 90, pit: [262, 330, 392, 523] }, { n: 'Groove — 110 BPM', bpm: 110, pit: [294, 370, 440, 587] }, { n: 'Rush — 135 BPM', bpm: 135, pit: [330, 415, 494, 659] }];
+  let my = null;
   const save = (k, v) => { try { localStorage.setItem(k, v ? '1' : '0'); } catch (ex) {} };
   const menu = () => {
     st.innerHTML = `<div style="text-align:center"><p class="meta">Hit each arrow when it reaches the receptors. Tap the lanes, or use ← ↓ ↑ → (or D F J K). Turn the sound on.</p>
       <label><input type="checkbox" id="fnfmid" ${opt.mid ? 'checked' : ''}> Center the bars (middlescroll)</label><br>
       <label><input type="checkbox" id="fnfdown" ${opt.down ? 'checked' : ''}> Put the bars down (downscroll)</label><br>
       <select id="fnfsong">${SONGS.map((x, i) => `<option value="${i}"${opt.song === i ? ' selected' : ''}>${x.n}</option>`).join('')}</select> <select id="fnfdiff">${['easy', 'normal', 'hard'].map(d => `<option value="${d}"${opt.diff === d ? ' selected' : ''}>${d}</option>`).join('')}</select>
+      <p class="meta">🎵 My song: <input type="file" id="fnfmy" accept="audio/*"> <span id="fnfmyst">${my ? '✅ ' + esc(my.name) + ' <button id="fnfclr">✖</button>' : ''}</span></p>
       <p><button id="fnfgo">▶ Start</button></p></div>`;
     document.getElementById('fnfmid').onchange = ev => { opt.mid = ev.target.checked; save('fnf_mid', opt.mid); };
     document.getElementById('fnfdown').onchange = ev => { opt.down = ev.target.checked; save('fnf_down', opt.down); };
     document.getElementById('fnfsong').onchange = ev => { opt.song = +ev.target.value; try { localStorage.setItem('fnf_song', opt.song); } catch (ex) {} };
     document.getElementById('fnfdiff').onchange = ev => { opt.diff = ev.target.value; try { localStorage.setItem('fnf_diff', opt.diff); } catch (ex) {} };
+    const mc = document.getElementById('fnfclr'); if (mc) mc.onclick = () => { my = null; menu(); };
+    document.getElementById('fnfmy').onchange = async ev => {
+      const f = ev.target.files[0], stl = document.getElementById('fnfmyst'); if (!f) return;
+      stl.textContent = 'Reading…';
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext, tmp = new AC(), ab = await f.arrayBuffer();
+        const buf = await new Promise((res, rej) => { tmp.decodeAudioData(ab, res, rej); });
+        try { tmp.close(); } catch (ex) {}
+        my = { name: f.name, buf }; menu();
+      } catch (ex) { stl.textContent = '❌ Could not read this file'; }
+    };
     document.getElementById('fnfgo').onclick = run;
   };
   const run = () => {
+    const myN = my ? fnfAnalyze(my.buf, opt.diff) : null;
+    if (my && myN.length < 8) { alert('Could not find a clear beat in this song. Try another file or a different difficulty.'); return; }
+    const myS = !!myN;
     const AC = window.AudioContext || window.webkitAudioContext; let ac = null;
     try { ac = new AC(); if (ac.resume) ac.resume(); } catch (ex) {}
     const W = Math.min(420, window.innerWidth - 24), H = 440;
@@ -622,15 +774,17 @@ function playFnf() {
     const lw = opt.mid ? Math.min(70, W / 4.4) : W / 8.4, px0 = opt.mid ? (W - 4 * lw) / 2 : W / 2 + (W / 2 - 4 * lw) / 2, ox0 = (W / 2 - 4 * lw) / 2;
     const recY = opt.down ? H - 70 : 44, dir = opt.down ? -1 : 1, SPD = 0.42, COL = ['#c24b99', '#00d5ff', '#12fa05', '#f9393f'], ROT = [-Math.PI / 2, Math.PI, 0, Math.PI / 2], PIT = (SONGS[opt.song] || SONGS[0]).pit;
     const BPM = (SONGS[opt.song] || SONGS[0]).bpm, B = 60000 / BPM, stp = B / 2, lead = 2000, chart = []; let lastL = -1;
-    for (let sec = 0; sec < 14; sec++) for (let i = 0; i < 16; i++) {
+    for (let sec = 0; sec < (myS ? 0 : 14); sec++) for (let i = 0; i < 16; i++) {
       if (Math.random() > ({ easy: 0.3, normal: 0.47, hard: 0.7 }[opt.diff] || 0.47)) continue;
       let l = Math.floor(Math.random() * 4); if (l === lastL && Math.random() < 0.6) l = (l + 1 + Math.floor(Math.random() * 3)) % 4; lastL = l;
       chart.push({ t: lead + (sec * 16 + i) * stp, lane: l, who: sec % 2 ? 'p' : 'o', done: false });
     }
+    if (myS) myN.forEach(o => chart.push({ t: lead + o.t, lane: o.lane, who: 'p', done: false }));
     const endT = chart[chart.length - 1].t + 1500, total = chart.filter(n => n.who === 'p').length;
-    const tone = (f, d, type, v) => { if (!ac) return; try { const o = ac.createOscillator(), g = ac.createGain(), n = ac.currentTime; o.type = type; o.frequency.value = f; g.gain.setValueAtTime(v, n); g.gain.exponentialRampToValueAtTime(0.001, n + d); o.connect(g); g.connect(ac.destination); o.start(); o.stop(n + d); } catch (ex) {} };
-    const kick = () => { if (!ac) return; try { const o = ac.createOscillator(), g = ac.createGain(), n = ac.currentTime; o.frequency.setValueAtTime(140, n); o.frequency.exponentialRampToValueAtTime(40, n + 0.12); g.gain.setValueAtTime(0.35, n); g.gain.exponentialRampToValueAtTime(0.001, n + 0.15); o.connect(g); g.connect(ac.destination); o.start(); o.stop(n + 0.16); } catch (ex) {} };
-    const t0 = performance.now(), now = () => performance.now() - t0; let sv = false;
+    const tone = (f, d, type, v) => { if (!ac || !gameSoundOn()) return; try { const o = ac.createOscillator(), g = ac.createGain(), n = ac.currentTime; o.type = type; o.frequency.value = f; g.gain.setValueAtTime(v, n); g.gain.exponentialRampToValueAtTime(0.001, n + d); o.connect(g); g.connect(ac.destination); o.start(); o.stop(n + d); } catch (ex) {} };
+    const kick = () => { if (!ac || !gameSoundOn()) return; try { const o = ac.createOscillator(), g = ac.createGain(), n = ac.currentTime; o.frequency.setValueAtTime(140, n); o.frequency.exponentialRampToValueAtTime(40, n + 0.12); g.gain.setValueAtTime(0.35, n); g.gain.exponentialRampToValueAtTime(0.001, n + 0.15); o.connect(g); g.connect(ac.destination); o.start(); o.stop(n + 0.16); } catch (ex) {} };
+    const t0 = performance.now(), now = () => performance.now() - t0; let sv = false, src = null;
+    if (myS && ac) { try { src = ac.createBufferSource(); src.buffer = my.buf; const gn = ac.createGain(); gn.gain.value = gameSoundOn() ? 0.9 : 0; src.connect(gn); gn.connect(ac.destination); src.start(ac.currentTime + lead / 1000); } catch (ex) {} }
     let score = 0, combo = 0, health = 0.5, over = false, failed = false, beat = 0, judge = null; const cnt = { sick: 0, good: 0, bad: 0, miss: 0 }, fl = [0, 0, 0, 0], fo = [0, 0, 0, 0];
     const J = (txt, c) => { judge = { txt, c, t: performance.now() }; };
     const press = lane => {
@@ -660,7 +814,7 @@ function playFnf() {
       if (document.getElementById('gcv') !== cv) { clearInterval(id); window.removeEventListener('keydown', kk); try { ac && ac.close(); } catch (ex) {} return; }
       const t = now(), pn = performance.now();
       if (!over) {
-        while (t >= beat * B) { kick(); if (beat % 4 === 0) tone(98, 0.3, 'sine', 0.2); else if (beat % 4 === 2) tone(131, 0.25, 'sine', 0.18); beat++; }
+        while (!myS && t >= beat * B) { kick(); if (beat % 4 === 0) tone(98, 0.3, 'sine', 0.2); else if (beat % 4 === 2) tone(131, 0.25, 'sine', 0.18); beat++; }
         chart.forEach(n => {
           if (n.done) return;
           if (n.who === 'o' && t >= n.t) { n.done = true; fo[n.lane] = pn + 120; tone(PIT[n.lane] / 2, 0.14, 'triangle', 0.1); }
@@ -683,7 +837,7 @@ function playFnf() {
       if (judge && pn - judge.t < 600) { cx.font = 'bold 22px sans-serif'; cx.textAlign = 'center'; cx.fillStyle = judge.c; cx.fillText(judge.txt, W / 2, H / 2); if (combo > 1) { cx.font = 'bold 16px sans-serif'; cx.fillStyle = '#fff'; cx.fillText(combo + ' combo', W / 2, H / 2 + 24); } }
       const acc = total ? Math.round(((cnt.sick + cnt.good * 0.75 + cnt.bad * 0.4) / Math.max(1, cnt.sick + cnt.good + cnt.bad + cnt.miss)) * 100) : 0;
       if (over) {
-        if (!sv) { sv = true; recHS('fnf', score); }
+        if (!sv) { sv = true; if (!myS) recHS('fnf', score); try { src && src.stop(); } catch (ex) {} }
         cx.fillStyle = 'rgba(0,0,0,.65)'; cx.fillRect(0, H / 2 - 60, W, 120); cx.fillStyle = '#fff'; cx.textAlign = 'center';
         cx.font = 'bold 24px sans-serif'; cx.fillText(failed ? 'Game over 💀' : `Rank ${acc >= 95 ? 'S' : acc >= 85 ? 'A' : acc >= 70 ? 'B' : 'C'} · ${acc}%`, W / 2, H / 2 - 18);
         cx.font = '14px sans-serif'; cx.fillText(`Sick ${cnt.sick} · Good ${cnt.good} · Bad ${cnt.bad} · Miss ${cnt.miss}`, W / 2, H / 2 + 8); cx.fillText('Tap for options / retry', W / 2, H / 2 + 34);
@@ -943,6 +1097,23 @@ async function homeExtras() {
       } catch (e) {}
     });
   }
+  const pins = lsGet('pingen');
+  if (pins.length && hero0 && !document.getElementById('pinrows')) {
+    const prs = await Promise.allSettled(pins.map(p => api(`/discover/${p.type}`, `&with_genres=${p.id}&sort_by=popularity.desc&vote_count.gte=100`)));
+    const html = prs.map((r, i) => {
+      const p = pins[i], l = r.status === 'fulfilled' ? (r.value.results || []).filter(x => x.poster_path && !isBlocked(p.type, x.id) && !isNoInt(p.type, x.id)).slice(0, 20) : [];
+      return l.length ? `<section class="row"><div class="hd"><h2 class="sec">★ ${esc(p.name)} ${p.type === 'tv' ? 'series' : 'movies'}</h2><button class="unpin" data-t="${p.type}" data-i="${p.id}">Unpin</button></div><div class="rail">${l.map(x => `<div class="card" tabindex="0" data-type="${p.type}" data-id="${x.id}"><img loading="lazy" decoding="async" src="${IMG}w342${x.poster_path}" alt="${esc(x.title || x.name)}"><div>${esc(x.title || x.name)}<small>${p.type === 'tv' ? 'Series' : 'Movie'}</small></div></div>`).join('')}</div></section>` : '';
+    }).join('');
+    const mo = document.getElementById('moods');
+    if (html && mo && tab === 'all') {
+      mo.insertAdjacentHTML('afterend', `<div id="pinrows">${html}</div>`);
+      bindCards();
+      document.querySelectorAll('#pinrows .unpin').forEach(b => b.onclick = () => {
+        lsSet('pingen', lsGet('pingen').filter(p => !(p.type === b.dataset.t && String(p.id) === b.dataset.i)));
+        b.closest('section').remove();
+      });
+    }
+  }
   const uniq = [];
   [...getCW(), ...lsGet('hist'), ...lsGet('fav')].forEach(x => { if (x && x.type && x.id && !uniq.some(u => same(u, x.type, x.id))) uniq.push(x); });
   // New episodes of favorite series (checked when the app is open)
@@ -977,7 +1148,7 @@ async function homeExtras() {
       if (r.status !== 'fulfilled') return;
       (r.value.results || []).forEach(m => {
         const t = m.media_type || base[i].type, k = t + '/' + m.id;
-        if (!m.poster_path || isBlocked(t, m.id) || uniq.some(u => same(u, t, m.id)) || isDone(t, m.id)) return;
+        if (!m.poster_path || isBlocked(t, m.id) || uniq.some(u => same(u, t, m.id)) || isDone(t, m.id) || isNoInt(t, m.id)) return;
         const o = sc[k] || (sc[k] = { m, t, score: 0 });
         o.score += 3 + (base.length - i) * 0.2 + (m.genre_ids || []).reduce((a, g) => a + (gw[g] || 0) * 0.15, 0) + (m.vote_average || 0) * 0.1;
       });
@@ -1102,7 +1273,8 @@ try {
   soundEnabled = localStorage.getItem('sound_enabled') !== 'false';
   customBrand = localStorage.getItem('custom_brand') || 'Screenroom';
   const theme = localStorage.getItem('theme') || 'dark';
-  if (theme === 'light') document.body.classList.add('light');
+  if (isLightNow()) document.body.classList.add('light');
+  if (localStorage.getItem('nospoil') === '1') document.body.classList.add('nospoil');
   const accent = localStorage.getItem('accent');
   if (accent) document.documentElement.style.setProperty('--accent', accent);
   applyPreset(localStorage.getItem('preset') || '');
@@ -1832,6 +2004,8 @@ window.addEventListener('scroll', () => {
 }, { passive: true });
 totopBtn.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
+const isNoInt = (t, i) => lsGet('noint').includes(t + '/' + i);
+const isPinned = (t, g) => lsGet('pingen').some(p => p.type === t && String(p.id) === String(g));
 const lsGet = k => { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch (e) { return []; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const same = (a, type, id) => a.type === type && String(a.id) === String(id);
@@ -1923,7 +2097,7 @@ async function homeView() {
   const rs = await Promise.allSettled(paths.map(x => api(x)));
   if (rs.every(r => r.status === 'rejected')) throw rs[0].reason;
   const hw = localStorage.getItem('hidew') === '1';
-  const L = (i, t) => (rs[i].status === 'fulfilled' ? rs[i].value.results : []).filter(x => x.poster_path && !(hw && isDone(x.media_type || t || 'movie', x.id))).map(x => ({ ...x, media_type: x.media_type || t }));
+  const L = (i, t) => (rs[i].status === 'fulfilled' ? rs[i].value.results : []).filter(x => x.poster_path && !isNoInt(x.media_type || t || 'movie', x.id) && !(hw && isDone(x.media_type || t || 'movie', x.id))).map(x => ({ ...x, media_type: x.media_type || t }));
   const day = L(0), week = L(1), now = L(2, 'movie'), ps = L(3, 'tv'), pm = L(4, 'movie'), tm = L(5, 'movie'), ts = L(6, 'tv');
   const pool = day.filter(x => x.backdrop_path).slice(0, 6);
   const hero = pool[Math.floor(Math.random() * pool.length)];
@@ -1967,7 +2141,7 @@ async function upcomingView() {
 function cwRow() {
   const l = getCW().filter(x => (tab === 'all' || tab === 'type') && !isBlocked(x.type, x.id));
   if (!l.length) return '';
-  return `<div class="row"><h2 class="sec">Continue watching</h2><div class="grid">` + l.map(x => `
+  return `<div class="row"><div class="hd"><h2 class="sec">Continue watching</h2><button id="clrcw">Clear all</button></div><div class="grid">` + l.map(x => `
     <div class="card" tabindex="0" data-type="${x.type}" data-id="${x.id}" data-s="${x.s}" data-e="${x.e}" data-t="${x.time}">
       <button class="x" aria-label="Remove from continue watching">×</button>
       <img loading="lazy" decoding="async" src="${IMG}w342${x.poster}" alt="${esc(x.name)}">
@@ -1978,6 +2152,7 @@ function cwRow() {
 function render(items, title, withCW) {
   updateBackVisibility(); clearHash();
   items = items.filter(i => i.media_type !== 'person' && i.poster_path);
+  if (withCW) items = items.filter(i => !isNoInt(i.media_type || (tab === 'tv' ? 'tv' : (tab === 'movie' ? 'movie' : (i.title ? 'movie' : 'tv'))), i.id));
   const cw = withCW ? cwRow() : '';
   const bar = withCW ? filterBar() : '';
   if (!items.length && !cw) { app.innerHTML = bar + emptyState('No titles found', 'Try a different spelling, or clear the filters.'); bindFilters(); return; }
@@ -2019,7 +2194,7 @@ function filterBar() {
     <select id="fs" aria-label="Sort">${sortOpts}</select>
     <input id="fy" type="number" min="1900" max="2100" placeholder="Year" value="${esc(filt.year)}" aria-label="Year">
     <input id="fminrating" type="number" min="0" max="10" step="0.5" placeholder="Min ★" value="${esc(filt.minRating)}" aria-label="Min Rating">
-    ${filt.genre || filt.year || filt.sort !== 'popular' || filt.minRating ? '<button id="fc">Clear</button>' : ''}</div>`;
+    ${filt.genre || filt.year || filt.sort !== 'popular' || filt.minRating ? '<button id="fc">Clear</button>' : ''}${filt.genre ? `<button id="fpin">${isPinned(tab, filt.genre) ? '★ Pinned' : '☆ Pin to Home'}</button>` : ''}</div>`;
 }
 
 function bindFilters() {
@@ -2029,6 +2204,12 @@ function bindFilters() {
   document.getElementById('fy').onchange = ev => { filt.year = ev.target.value.trim(); home(); };
   const mr = document.getElementById('fminrating');
   if (mr) mr.onchange = ev => { filt.minRating = ev.target.value.trim(); home(); };
+  const pn = document.getElementById('fpin');
+  if (pn) pn.onclick = () => {
+    const l = lsGet('pingen'), gg = (genres[tab] || []).find(x => String(x.id) === String(filt.genre));
+    lsSet('pingen', isPinned(tab, filt.genre) ? l.filter(p => !(p.type === tab && String(p.id) === String(filt.genre))) : [...l, { type: tab, id: +filt.genre, name: gg ? gg.name : 'Genre' }].slice(0, 6));
+    home();
+  };
   const c = document.getElementById('fc'); if (c) c.onclick = () => { filt = { genre: '', year: '', sort: 'popular', minVote: '', minRating: '' }; home(); };
 }
 
@@ -2056,6 +2237,32 @@ function bindCards() {
     setCW(getCW().filter(x => !same(x, c.dataset.type, c.dataset.id)));
     c.remove();
     if (!row.querySelector('.card')) row.remove();
+  });
+  const clrcw = app.querySelector('#clrcw');
+  if (clrcw) clrcw.onclick = () => {
+    if (!confirm('Clear Continue watching? Resume points are lost; your list and history stay.')) return;
+    setCW([]); clrcw.closest('.row').remove();
+  };
+  app.querySelectorAll('.card[data-type][data-id]').forEach(c => {
+    if (c.dataset.pv || !/^(movie|tv)$/.test(c.dataset.type)) return;
+    c.dataset.pv = '1';
+    let tm = 0, fr = null;
+    const stop = () => { clearTimeout(tm); if (fr) { fr.remove(); fr = null; } };
+    c.addEventListener('pointerdown', () => {
+      tm = setTimeout(async () => {
+        try {
+          const r = await api(`/${c.dataset.type}/${c.dataset.id}/videos`), vs = r.results || [];
+          const v = vs.find(x => x.site === 'YouTube' && x.type === 'Trailer') || vs.find(x => x.site === 'YouTube');
+          if (!v) return;
+          fr = document.createElement('iframe');
+          fr.src = `https://www.youtube.com/embed/${v.key}?autoplay=1&mute=1&controls=0&playsinline=1`; fr.allow = 'autoplay';
+          fr.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:0;z-index:5;pointer-events:none;background:#000';
+          c.style.position = 'relative'; c.appendChild(fr); c.dataset.held = '1';
+        } catch (e) {}
+      }, 700);
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => c.addEventListener(ev, () => { stop(); if (c.dataset.held) setTimeout(() => { delete c.dataset.held; }, 60); }));
+    c.addEventListener('click', e => { if (c.dataset.held) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
   });
 }
 
@@ -2138,6 +2345,8 @@ function backupBox() {
 
     <div style="margin-top:12px">
       <label><input type="checkbox" id="soundtoggle"${soundEnabled ? ' checked' : ''}> Enable UI Click Sound FX (Web Audio API)</label>
+      <label><input type="checkbox" id="autotheme"${localStorage.getItem('autotheme') === '1' ? ' checked' : ''}> Auto light/dark theme by time of day (light 7:00–19:00)</label>
+      <label><input type="checkbox" id="nospoil"${localStorage.getItem('nospoil') === '1' ? ' checked' : ''}> Spoiler-free mode (blur unwatched episode images and summaries; tap to reveal)</label>
     </div>
 
     <div class="slider-group">
@@ -2208,6 +2417,16 @@ function bindBackup() {
   if (st) st.onchange = () => {
     soundEnabled = st.checked;
     try { localStorage.setItem('sound_enabled', soundEnabled); } catch (e) {}
+  };
+  const atg = document.getElementById('autotheme');
+  if (atg) atg.onchange = () => {
+    try { localStorage.setItem('autotheme', atg.checked ? '1' : '0'); } catch (e) {}
+    if (!localStorage.getItem('preset')) document.body.classList.toggle('light', isLightNow());
+  };
+  const nsg = document.getElementById('nospoil');
+  if (nsg) nsg.onchange = () => {
+    try { localStorage.setItem('nospoil', nsg.checked ? '1' : '0'); } catch (e) {}
+    document.body.classList.toggle('nospoil', nsg.checked);
   };
 
   const troll = document.getElementById('trolladmin');
@@ -2584,6 +2803,7 @@ async function watch(type, id, res = {}, fromBack = false) {
     { const pm = getProvMap()[type + '/' + id]; if (pm && !party.active && ['vidyst', 'multiembed', 'vidsrc'].includes(pm)) playerProv = pm; }
     const s = res.s || 1, e = res.e || 1, t = res.t || 0;
     current = { type, id, name, poster: d.poster_path, s, e, seasons: d.number_of_seasons, vote: d.vote_average || 0, date: d.release_date || d.first_air_date || '' };
+    if (party.active) { const ph = lsGet('party_hist').filter(x => !same(x, type, id)); lsSet('party_hist', [{ type, id: +id, name: current.name, d: Date.now() }, ...ph].slice(0, 30)); }
     addHist(current);
     const amb = document.getElementById('amb');
     if (d.backdrop_path) { amb.style.backgroundImage = `url(${IMG}w300${d.backdrop_path})`; amb.classList.add('on'); } else amb.classList.remove('on');
@@ -2663,6 +2883,8 @@ async function watch(type, id, res = {}, fromBack = false) {
           <button id="addlist">＋ List</button>
           <button id="postbtn">🖼 Poster</button>
           <button id="tramp">▶ Trailer</button>
+          <button id="noint">${isNoInt(type, id) ? '↩ Show on Home again' : '🚫 Not interested'}</button>
+          ${party.active ? '<button id="qadd">➕ Party queue</button>' : ''}
           <button id="share">Share</button>
           <button id="sandbtn">🧪 Embed test</button>
           <button id="sleepbtn">😴 Sleep</button>
@@ -2802,6 +3024,17 @@ async function watch(type, id, res = {}, fromBack = false) {
       ev.target.classList.toggle('on', on);
       ev.target.textContent = on ? '♥ In my list' : '♡ Add to my list';
     };
+    document.getElementById('noint').onclick = ev => {
+      const k = type + '/' + id, l = lsGet('noint'), has = l.includes(k);
+      lsSet('noint', has ? l.filter(x => x !== k) : [k, ...l].slice(0, 300));
+      ev.target.textContent = has ? '🚫 Not interested' : '↩ Show on Home again';
+    };
+    const qa = document.getElementById('qadd');
+    if (qa) qa.onclick = () => {
+      const item = { type, id: +id, name: current.name, poster: current.poster || '' };
+      if (!hub.queue.some(x => same(x, type, id))) { hub.queue.push(item); sendGame({ op: 'hubq', item }); }
+      qa.textContent = '✓ In party queue';
+    };
     if (type === 'tv') { document.getElementById('nextep').onclick = nextEpisodeNow; loadEpisodes(d); }
   } catch (err) { app.innerHTML = `<p class="msg">${esc(err.message)}</p>`; }
 }
@@ -2869,7 +3102,7 @@ async function loadCollection(d) {
     const col = await api(`/collection/${d.belongs_to_collection.id}`);
     const parts = (col.parts || []).filter(x => x.poster_path).sort((a,b) => (a.release_date || '').localeCompare(b.release_date || ''));
     if (parts.length <= 1) return;
-    colBox.innerHTML = `<div class="hd"><h2 class="sec">${esc(col.name)}</h2></div><div class="railwrap"><button class="arr l" aria-label="Scroll left">‹</button><div class="rail">` +
+    colBox.innerHTML = `<div class="hd"><h2 class="sec">${esc(col.name)} <span class="meta">· ${parts.filter(x => isDone('movie', x.id)).length}/${parts.length} watched</span></h2></div><div class="railwrap"><button class="arr l" aria-label="Scroll left">‹</button><div class="rail">` +
       parts.map(x => `<div class="card" tabindex="0" data-type="movie" data-id="${x.id}"><img loading="lazy" decoding="async" src="${IMG}w342${x.poster_path}" alt="${esc(x.title)}"><div>${esc(x.title)}<small>${(x.release_date || '').slice(0, 4)}</small></div></div>`).join('') +
       `</div><button class="arr r" aria-label="Scroll right">›</button></div>`;
     bindCards();
@@ -3080,7 +3313,17 @@ function showNext(s, e) {
   }, 1000);
 }
 
+document.addEventListener('click', e => {
+  if (!document.body.classList.contains('nospoil')) return;
+  const a = e.target.closest('.epc'); if (a && !e.target.closest('button')) a.classList.toggle('rev');
+});
 const PATCHNOTES = [
+  { v: '61', c: ['Rhythm: play your own music! Pick an audio file (mp3, m4a, wav…) in the Rhythm menu; the game finds the beats in the first 2 minutes and builds the arrows from them. Scores with your own song are not added to the leaderboard.'] },
+  { v: '60', c: ['Watch Party: new 🍿 Party hub button (next to the reactions). Vote for the next title (4 options from the queue or your list, live counts, 🏆 winner opens for you), a shared party queue (➕ Party queue button on title pages), and a Watched together history.'] },
+  { v: '59', c: ['Home: pin your favorite genres (Movies / Series tab, pick a genre, tap ☆ Pin to Home) to get a row for each on Home. Settings: new Auto light/dark theme by time of day and Spoiler-free mode (blurs unwatched episode images and summaries, tap an episode to reveal it). Movie pages: the saga row now shows how many movies you watched (e.g. 3/5). Posters: hold a poster to preview its trailer muted.'] },
+  { v: '58', c: ['Games: two new games, Flappy (tap or Space to flap, best score saved) and Minesweeper (9×9, 10 mines, Dig / Flag mode button, first tap is always safe).'] },
+  { v: '57', c: ['Watch Party: reaction counters under each emoji (everyone’s reactions are counted). Games: ▶ shortcut to the last game you played. Title pages: new 🚫 Not interested button hides a title from Home, Picked for you and the trending tabs (tap ↩ on its page to bring it back).'] },
+  { v: '56', c: ['Games: new 🔊 Sound on / 🔇 Sound off button on the Games page (for now it controls the Rhythm game sounds; the other games are silent). Home: new “Clear all” button on Continue watching.'] },
   { v: '55', c: ['iPhone: fixed the header (logo, search bar, buttons) disappearing and the menu bar sitting inside the header.'] },
   { v: '54', c: ['Games: 2048 and Memory, both with a leaderboard. Watch Party: new ✅ Everyone ready? button for the host. When every friend taps “I’m ready”, the shared countdown starts by itself.'] },
   { v: '53', c: ['Watch Party: emoji reactions that float up on everyone’s screen. Games: Rematch button after online Pong, Tic-Tac-Toe and Connect 4; Rhythm now has 3 songs (different tempos) and easy / normal / hard. Profile: badges and a custom banner (color or image). Title pages: where to watch (streaming providers). Themes: share your colors with a code, and paste a friend’s code.'] },
