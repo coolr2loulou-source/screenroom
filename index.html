@@ -297,7 +297,7 @@ body.theater #next{position:fixed;left:50%;transform:translateX(-50%);bottom:cal
 <p class="attr">This product uses the TMDB API but is not endorsed or certified by TMDB. <span id="contact"></span></p>
 
 <script>
-const APP_VERSION = '62';
+const APP_VERSION = '63';
 const IMG = 'https://image.tmdb.org/t/p/';
 const app = document.getElementById('app');
 const q = document.getElementById('q');
@@ -597,6 +597,51 @@ function gamesView() {
     document.getElementById('gstage').scrollIntoView({ behavior: 'smooth' });
   });
 }
+function gfxRR(cx, x, y, w, h, r) { cx.beginPath(); cx.moveTo(x + r, y); cx.arcTo(x + w, y, x + w, y + h, r); cx.arcTo(x + w, y + h, x, y + h, r); cx.arcTo(x, y + h, x, y, r); cx.arcTo(x, y, x + w, y, r); cx.closePath(); }
+function gameBg(cx, W, H, kind, t) {
+  let g;
+  if (kind === 'sky') {
+    g = cx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#4ec0ff'); g.addColorStop(1, '#c9efff'); cx.fillStyle = g; cx.fillRect(0, 0, W, H);
+    cx.fillStyle = 'rgba(255,255,255,.85)';
+    for (let i = 0; i < 4; i++) { const m = W + 120, x = ((i * 130 - t / 40) % m + m) % m - 60, y = 50 + (i * 70) % 200 + (i % 2) * 30; cx.beginPath(); cx.arc(x, y, 18, 0, 7); cx.arc(x + 20, y - 8, 22, 0, 7); cx.arc(x + 42, y, 16, 0, 7); cx.fill(); }
+  } else if (kind === 'grass') {
+    for (let yy = 0; yy * t < H; yy++) for (let xx = 0; xx * t < W; xx++) { cx.fillStyle = (xx + yy) % 2 ? '#a8d86e' : '#9ccf63'; cx.fillRect(xx * t, yy * t, t, t); }
+  } else if (kind === 'pac') {
+    g = cx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#04061a'); g.addColorStop(1, '#0d1245'); cx.fillStyle = g; cx.fillRect(0, 0, W, H);
+  } else if (kind === 'fnf') {
+    g = cx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, 'rgba(26,15,58,.55)'); g.addColorStop(1, 'rgba(70,20,110,.55)'); cx.fillStyle = g; cx.fillRect(0, 0, W, H);
+    cx.fillStyle = 'rgba(255,255,255,.07)';
+    for (let i = 0; i < 12; i++) cx.fillRect((i * 97) % W, ((t / 5 + i * 61) % H), 2, 26);
+  }
+}
+function gfxPipe(cx, x, w, top, bot, H) {
+  const gr = cx.createLinearGradient(x, 0, x + w, 0); gr.addColorStop(0, '#5cc63a'); gr.addColorStop(0.5, '#8ee35f'); gr.addColorStop(1, '#3f9f27');
+  cx.fillStyle = gr; cx.strokeStyle = '#2b6e1a'; cx.lineWidth = 2;
+  [[x, 0, w, top - 14], [x - 4, top - 14, w + 8, 14], [x, bot + 14, w, H - bot - 14], [x - 4, bot, w + 8, 14]].forEach(r => { cx.fillRect(r[0], r[1], r[2], r[3]); cx.strokeRect(r[0], r[1], r[2], r[3]); });
+}
+function gfxBird(cx, x, y, vy, t) {
+  cx.save(); cx.translate(x, y); cx.rotate(Math.max(-0.5, Math.min(1.1, vy * 0.08)));
+  cx.fillStyle = '#ffd34d'; cx.strokeStyle = '#c98a00'; cx.lineWidth = 1.5; cx.beginPath(); cx.ellipse(0, 0, 15, 12, 0, 0, 7); cx.fill(); cx.stroke();
+  cx.fillStyle = '#fff'; cx.beginPath(); cx.arc(6, -4, 5, 0, 7); cx.fill(); cx.fillStyle = '#222'; cx.beginPath(); cx.arc(7.5, -4, 2.3, 0, 7); cx.fill();
+  cx.fillStyle = '#ff8a3d'; cx.beginPath(); cx.moveTo(11, 0); cx.lineTo(21, 3); cx.lineTo(11, 7); cx.closePath(); cx.fill();
+  const w = Math.sin(t / 60) * 4; cx.fillStyle = '#ffeaa0'; cx.beginPath(); cx.ellipse(-4, 3 + w / 2, 8, 5 + Math.abs(w) / 2, -0.3, 0, 7); cx.fill(); cx.stroke();
+  cx.restore();
+}
+function gfxSnake(cx, sn, dir, c, dead, food) {
+  const ax = food.x * c + c / 2, ay = food.y * c + c / 2;
+  cx.fillStyle = '#e33b3b'; cx.beginPath(); cx.arc(ax, ay, c / 2 - 2, 0, 7); cx.fill();
+  cx.fillStyle = 'rgba(255,255,255,.55)'; cx.beginPath(); cx.arc(ax - c * 0.14, ay - c * 0.14, c * 0.1, 0, 7); cx.fill();
+  cx.strokeStyle = '#6b3b12'; cx.lineWidth = 2; cx.beginPath(); cx.moveTo(ax, ay - c * 0.3); cx.lineTo(ax + 2, ay - c * 0.5); cx.stroke();
+  cx.fillStyle = '#3aa335'; cx.beginPath(); cx.ellipse(ax + c * 0.18, ay - c * 0.42, c * 0.16, c * 0.08, -0.5, 0, 7); cx.fill();
+  for (let i = sn.length - 1; i >= 0; i--) {
+    const p = sn[i], head = i === 0;
+    cx.fillStyle = dead ? '#8a8a8a' : (i % 2 ? '#2fae63' : '#3ddc84'); gfxRR(cx, p.x * c + (head ? 0 : 1), p.y * c + (head ? 0 : 1), c - (head ? 0 : 2), c - (head ? 0 : 2), c * (head ? 0.4 : 0.3)); cx.fill();
+    if (head) {
+      const cxh = p.x * c + c / 2, cyh = p.y * c + c / 2;
+      [-1, 1].forEach(s => { const ex = cxh + dir.x * c * 0.15 - dir.y * s * c * 0.22, ey = cyh + dir.y * c * 0.15 + dir.x * s * c * 0.22; cx.fillStyle = '#fff'; cx.beginPath(); cx.arc(ex, ey, c * 0.14, 0, 7); cx.fill(); cx.fillStyle = dead ? '#c00' : '#111'; cx.beginPath(); cx.arc(ex + dir.x * c * 0.04, ey + dir.y * c * 0.04, c * 0.07, 0, 7); cx.fill(); });
+    }
+  }
+}
 function playFlappy() {
   const st = document.getElementById('gstage'), W = Math.min(360, window.innerWidth - 32), H = 440;
   st.innerHTML = `<canvas id="gcv" width="${W}" height="${H}" style="display:block;margin:10px auto;border:1px solid var(--line);border-radius:10px;touch-action:none;background:var(--bg)"></canvas><div id="gscore" class="meta" style="text-align:center"></div>`;
@@ -618,9 +663,11 @@ function playFlappy() {
       if (y < 0 || y > H) dead = true;
       if (dead && score > best) { best = score; try { localStorage.setItem('flappy_best', best); } catch (e) {} }
     }
-    cx.clearRect(0, 0, W, H); cx.fillStyle = acc;
-    pipes.forEach(p => { cx.fillRect(p.x, 0, 40, p.gap); cx.fillRect(p.x, p.gap + 130, 40, H - p.gap - 130); });
-    cx.beginPath(); cx.arc(70, y, 11, 0, Math.PI * 2); cx.fillStyle = '#ffd34d'; cx.fill();
+    const tn = Date.now(); gameBg(cx, W, H, 'sky', tn);
+    pipes.forEach(p => gfxPipe(cx, p.x, 40, p.gap, p.gap + 130, H));
+    cx.fillStyle = '#ded895'; cx.fillRect(0, H - 14, W, 14); cx.fillStyle = '#6fbf3f'; cx.fillRect(0, H - 14, W, 4);
+    cx.fillStyle = 'rgba(0,0,0,.08)'; for (let gx = -((tn / 8) % 24); gx < W; gx += 24) cx.fillRect(gx, H - 10, 12, 10);
+    gfxBird(cx, 70, y, run && !dead ? vy : 0, tn);
     document.getElementById('gscore').textContent = dead ? `💥 Game over · ${score} · best ${best} — tap to retry` : run ? `Score ${score} · best ${best}` : `Tap / Space to flap · best ${best}`;
   }, 16);
 }
@@ -628,7 +675,36 @@ function playMines() {
   const st = document.getElementById('gstage'), N = 9, M = 10, c = Math.floor(Math.min(360, window.innerWidth - 32) / N);
   let g, flagMode = false, over, first;
   const nb = i => { const x = i % N, y = (i / N) | 0, r = []; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const a = x + dx, b = y + dy; if ((dx || dy) && a >= 0 && b >= 0 && a < N && b < N) r.push(b * N + a); } return r; };
-  const place = s => { let k = 0; while (k < M) { const i = Math.floor(Math.random() * N * N); if (i === s || nb(s).includes(i) || g[i].m) continue; g[i].m = true; k++; } g.forEach((q, i) => { q.n = nb(i).filter(j => g[j].m).length; }); };
+  const solvable = s => {
+    const o = new Set(), mk = new Set();
+    const flood = i => { if (o.has(i)) return; o.add(i); if (!g[i].n) nb(i).forEach(flood); };
+    flood(s);
+    for (let ch = true; ch;) {
+      ch = false;
+      const cons = [];
+      for (const i of o) { if (!g[i].n) continue; const u = nb(i).filter(j => !o.has(j) && !mk.has(j)), r = g[i].n - nb(i).filter(j => mk.has(j)).length; if (u.length) cons.push({ u, r }); }
+      for (const c of cons) {
+        if (c.r === 0) c.u.forEach(j => { if (!o.has(j)) { flood(j); ch = true; } });
+        else if (c.r === c.u.length) c.u.forEach(j => { if (!mk.has(j)) { mk.add(j); ch = true; } });
+      }
+      if (ch) continue;
+      for (const a of cons) for (const b of cons) {
+        if (a === b || a.u.length >= b.u.length || !a.u.every(j => b.u.includes(j))) continue;
+        const d = b.u.filter(j => !a.u.includes(j)), dr = b.r - a.r;
+        if (dr === 0) d.forEach(j => { if (!o.has(j)) { flood(j); ch = true; } });
+        else if (dr === d.length) d.forEach(j => { if (!mk.has(j)) { mk.add(j); ch = true; } });
+      }
+    }
+    return o.size === N * N - M;
+  };
+  const place = s => {
+    for (let tries = 0; tries < 300; tries++) {
+      g.forEach(q => { q.m = false; });
+      let k = 0; while (k < M) { const i = Math.floor(Math.random() * N * N); if (i === s || nb(s).includes(i) || g[i].m) continue; g[i].m = true; k++; }
+      g.forEach((q, i) => { q.n = nb(i).filter(j => g[j].m).length; });
+      if (solvable(s)) return;
+    }
+  };
   const open = i => { const q = g[i]; if (q.o || q.f) return; q.o = true; if (!q.m && !q.n) nb(i).forEach(open); };
   const tap = i => {
     if (over) return; const q = g[i];
@@ -673,9 +749,7 @@ function playSnake() {
       if (h.x < 0 || h.y < 0 || h.x >= N || h.y >= N || sn.some(p => p.x === h.x && p.y === h.y)) { dead = true; recHS('snake', score); if (score > best) { best = score; try { localStorage.setItem('snake_best', best); } catch (e) {} } }
       else { sn.unshift(h); if (h.x === food.x && h.y === food.y) { score++; spawn(); } else sn.pop(); }
     }
-    cx.clearRect(0, 0, Z, Z); cx.fillStyle = acc;
-    sn.forEach((p, i) => { cx.globalAlpha = i ? 0.8 : 1; cx.fillRect(p.x * c + 1, p.y * c + 1, c - 2, c - 2); });
-    cx.globalAlpha = 1; cx.fillStyle = '#ff4d4d'; cx.beginPath(); cx.arc(food.x * c + c / 2, food.y * c + c / 2, c / 2 - 2, 0, 7); cx.fill();
+    gameBg(cx, Z, Z, 'grass', c); gfxSnake(cx, sn, dir, c, dead, food);
     document.getElementById('gscore').textContent = dead ? `Game over — score ${score}. Tap to restart` : `Score ${score} · Best ${best}`;
   }, 120);
 }
@@ -698,7 +772,8 @@ function playPong(online) {
     if (document.getElementById('gcv') !== cv) { clearInterval(id); window.removeEventListener('keydown', kk); if (online && !(G && G.rs)) sendGame({ op: 'quit', sid }); return; }
     if (sim && !over) {
       bx += vx; by += vy;
-      if (by < 6 || by > H - 6) vy = -vy;
+      vy = Math.max(-6, Math.min(6, vy));
+      if (by < 6) { by = 6; vy = Math.abs(vy); } else if (by > H - 6) { by = H - 6; vy = -Math.abs(vy); }
       if (vx < 0 && bx - 6 <= 18 && bx > 6 && by > pa - 4 && by < pa + PH + 4) { vx = Math.min(8, -vx * 1.06); vy += (by - (pa + PH / 2)) * 0.07; }
       if (vx > 0 && bx + 6 >= W - 18 && bx < W - 6 && by > pb - 4 && by < pb + PH + 4) { vx = Math.max(-8, -vx * 1.06); vy += (by - (pb + PH / 2)) * 0.07; }
       if (bx < 0) { sb++; serve(1); } else if (bx > W) { sa++; serve(-1); }
@@ -716,21 +791,34 @@ function playPong(online) {
   }, 16);
 }
 function fnfAnalyze(buf, diff) {
-  const d = buf.getChannelData(0), sr = buf.sampleRate, hop = 1024, n = Math.min(Math.floor(d.length / hop) - 1, Math.floor(120 * sr / hop));
-  const en = new Float32Array(Math.max(n, 0)), zc = new Float32Array(Math.max(n, 0));
+  const d = buf.getChannelData(0), sr = buf.sampleRate, hop = 512, n = Math.min(Math.floor(d.length / hop) - 1, Math.floor(120 * sr / hop));
+  if (n < 200) return [];
+  const e2 = new Float32Array(n), zc = new Float32Array(n), fl = new Float32Array(n);
   for (let i = 0; i < n; i++) {
     let e = 0, z = 0;
-    for (let j = i * hop; j < (i + 1) * hop; j++) { const v = d[j]; e += v * v; if (j > 0 && (v >= 0) !== (d[j - 1] >= 0)) z++; }
-    en[i] = Math.sqrt(e / hop); zc[i] = z / hop;
+    for (let j = i * hop + 1; j < (i + 1) * hop; j++) { const v = d[j] - d[j - 1]; e += v * v; if ((d[j] >= 0) !== (d[j - 1] >= 0)) z++; }
+    e2[i] = Math.sqrt(e / hop); zc[i] = z / hop;
   }
-  const gap = (({ easy: 450, normal: 280, hard: 170 }[diff] || 280) / 1000) * sr / hop, out = []; let last = -1e9;
-  for (let i = 3; i < n - 1; i++) {
-    let m = 0; const from = Math.max(0, i - 20); for (let k = from; k < i; k++) m += en[k]; m /= (i - from);
-    if (en[i] > en[i - 1] && en[i] >= en[i + 1] && en[i] > m * 1.25 && en[i] - en[i - 1] > m * 0.1 && i - last >= gap) { out.push({ t: i * hop / sr * 1000, z: zc[i] }); last = i; }
+  for (let i = 1; i < n; i++) fl[i] = Math.max(0, e2[i] - e2[i - 1]);
+  const at = k => Math.max(fl[k - 1] || 0, fl[k] || 0, fl[k + 1] || 0);
+  let bestS = -1, P = 0, ph = 0;
+  for (let bpm = 80; bpm < 160; bpm += 0.25) {
+    const p = 60 / bpm * sr / hop;
+    for (let f0 = 1; f0 < p; f0++) {
+      let sc = 0, c = 0;
+      for (let x = f0; x < n - 2; x += p) { sc += at(Math.round(x)); c++; }
+      sc /= c; if (sc > bestS) { bestS = sc; P = p; ph = f0; }
+    }
   }
-  if (out.length < 4) return out.map(o => ({ t: o.t, lane: 0 }));
-  const zs = out.map(o => o.z).sort((a, b) => a - b), q = [zs[Math.floor(zs.length * 0.25)], zs[Math.floor(zs.length * 0.5)], zs[Math.floor(zs.length * 0.75)]];
-  return out.map(o => ({ t: o.t, lane: o.z < q[0] ? 0 : o.z < q[1] ? 1 : o.z < q[2] ? 2 : 3 }));
+  const slots = [];
+  for (let m = 0; ph + m * P / 2 < n - 2; m++) { const x = ph + m * P / 2; slots.push({ x, beat: m % 2 === 0, s: at(Math.round(x)) }); }
+  const pool = diff === 'easy' ? slots.filter(o => o.beat) : slots;
+  const sorted = pool.map(o => o.s).sort((a, b) => a - b), pct = { easy: 0.4, normal: 0.55, hard: 0.35 }[diff] || 0.55;
+  const thr = sorted[Math.floor(sorted.length * pct)] || 0;
+  const pick = pool.filter(o => o.s >= thr && o.s > 0);
+  if (pick.length < 4) return pick.map(o => ({ t: (o.x + 0.5) * hop / sr * 1000, lane: 0 }));
+  const zs = pick.map(o => zc[Math.round(o.x)]).sort((a, b) => a - b), q = [zs[Math.floor(zs.length * 0.25)], zs[Math.floor(zs.length * 0.5)], zs[Math.floor(zs.length * 0.75)]];
+  return pick.map(o => { const z = zc[Math.round(o.x)]; return { t: (o.x + 0.5) * hop / sr * 1000, lane: z < q[0] ? 0 : z < q[1] ? 1 : z < q[2] ? 2 : 3 }; });
 }
 function playFnf() {
   const st = document.getElementById('gstage');
@@ -744,11 +832,15 @@ function playFnf() {
       <label><input type="checkbox" id="fnfdown" ${opt.down ? 'checked' : ''}> Put the bars down (downscroll)</label><br>
       <select id="fnfsong">${SONGS.map((x, i) => `<option value="${i}"${opt.song === i ? ' selected' : ''}>${x.n}</option>`).join('')}</select> <select id="fnfdiff">${['easy', 'normal', 'hard'].map(d => `<option value="${d}"${opt.diff === d ? ' selected' : ''}>${d}</option>`).join('')}</select>
       <p class="meta">🎵 My song: <input type="file" id="fnfmy"> <span id="fnfmyst">${my ? '✅ ' + esc(my.name) + ' <button id="fnfclr">✖</button>' : ''}</span></p>
+      <p class="meta">⏱ Sync (my song): <button id="fnfo1">−</button> <span id="fnfov">${+localStorage.getItem('fnf_off') || 0} ms</span> <button id="fnfo2">+</button> <span>(+ = arrows later)</span></p>
       <p><button id="fnfgo">▶ Start</button></p></div>`;
     document.getElementById('fnfmid').onchange = ev => { opt.mid = ev.target.checked; save('fnf_mid', opt.mid); };
     document.getElementById('fnfdown').onchange = ev => { opt.down = ev.target.checked; save('fnf_down', opt.down); };
     document.getElementById('fnfsong').onchange = ev => { opt.song = +ev.target.value; try { localStorage.setItem('fnf_song', opt.song); } catch (ex) {} };
     document.getElementById('fnfdiff').onchange = ev => { opt.diff = ev.target.value; try { localStorage.setItem('fnf_diff', opt.diff); } catch (ex) {} };
+    const offSet = dv => { const v = Math.max(-500, Math.min(500, (+localStorage.getItem('fnf_off') || 0) + dv)); try { localStorage.setItem('fnf_off', v); } catch (ex) {} document.getElementById('fnfov').textContent = v + ' ms'; };
+    document.getElementById('fnfo1').onclick = () => offSet(-25);
+    document.getElementById('fnfo2').onclick = () => offSet(25);
     const mc = document.getElementById('fnfclr'); if (mc) mc.onclick = () => { my = null; menu(); };
     document.getElementById('fnfmy').onchange = async ev => {
       const f = ev.target.files[0], stl = document.getElementById('fnfmyst'); if (!f) return;
@@ -779,12 +871,12 @@ function playFnf() {
       let l = Math.floor(Math.random() * 4); if (l === lastL && Math.random() < 0.6) l = (l + 1 + Math.floor(Math.random() * 3)) % 4; lastL = l;
       chart.push({ t: lead + (sec * 16 + i) * stp, lane: l, who: sec % 2 ? 'p' : 'o', done: false });
     }
-    if (myS) myN.forEach(o => chart.push({ t: lead + o.t, lane: o.lane, who: 'p', done: false }));
+    if (myS) { const fo = +localStorage.getItem('fnf_off') || 0; myN.forEach(o => chart.push({ t: lead + o.t + fo, lane: o.lane, who: 'p', done: false })); }
     const endT = chart[chart.length - 1].t + 1500, total = chart.filter(n => n.who === 'p').length;
     const tone = (f, d, type, v) => { if (!ac || !gameSoundOn()) return; try { const o = ac.createOscillator(), g = ac.createGain(), n = ac.currentTime; o.type = type; o.frequency.value = f; g.gain.setValueAtTime(v, n); g.gain.exponentialRampToValueAtTime(0.001, n + d); o.connect(g); g.connect(ac.destination); o.start(); o.stop(n + d); } catch (ex) {} };
     const kick = () => { if (!ac || !gameSoundOn()) return; try { const o = ac.createOscillator(), g = ac.createGain(), n = ac.currentTime; o.frequency.setValueAtTime(140, n); o.frequency.exponentialRampToValueAtTime(40, n + 0.12); g.gain.setValueAtTime(0.35, n); g.gain.exponentialRampToValueAtTime(0.001, n + 0.15); o.connect(g); g.connect(ac.destination); o.start(); o.stop(n + 0.16); } catch (ex) {} };
     const t0 = performance.now(), now = () => performance.now() - t0; let sv = false, src = null;
-    if (myS && ac) { try { src = ac.createBufferSource(); src.buffer = my.buf; const gn = ac.createGain(); gn.gain.value = gameSoundOn() ? 0.9 : 0; src.connect(gn); gn.connect(ac.destination); src.start(ac.currentTime + lead / 1000); } catch (ex) {} }
+    if (myS && ac) { try { try { ac.resume(); } catch (ex) {} src = ac.createBufferSource(); src.buffer = my.buf; const gn = ac.createGain(); gn.gain.value = gameSoundOn() ? 0.9 : 0; src.connect(gn); gn.connect(ac.destination); src.start(ac.currentTime + lead / 1000); } catch (ex) {} }
     let score = 0, combo = 0, health = 0.5, over = false, failed = false, beat = 0, judge = null; const cnt = { sick: 0, good: 0, bad: 0, miss: 0 }, fl = [0, 0, 0, 0], fo = [0, 0, 0, 0];
     const J = (txt, c) => { judge = { txt, c, t: performance.now() }; };
     const press = lane => {
@@ -822,7 +914,7 @@ function playFnf() {
         });
         if (health <= 0) { over = true; failed = true; } else if (t > endT) over = true;
       }
-      cx.clearRect(0, 0, W, H);
+      cx.clearRect(0, 0, W, H); gameBg(cx, W, H, 'fnf', now());
       for (let l = 0; l < 4; l++) {
         if (!opt.mid) arrow(ox0 + l * lw + lw / 2, recY, l, fo[l] > pn ? 'fill' : 'line', fo[l] > pn ? 1 : 0.35);
         arrow(px0 + l * lw + lw / 2, recY, l, fl[l] > pn ? 'fill' : 'line', fl[l] > pn ? 1 : 0.6);
@@ -966,19 +1058,23 @@ function playPacman() {
       if (tickN % (power > 0 ? 5 : 4) === 0) { ghosts.forEach(stepGhost); hit(); }
     }
     if (over && !svd) { svd = true; recHS('pacman', score); }
-    cx.clearRect(0, 0, Wp, Hp);
+    cx.clearRect(0, 0, Wp, Hp); gameBg(cx, Wp, Hp, 'pac', 0);
     for (let y = 0; y < Rw; y++) for (let x = 0; x < Cw; x++) {
       const v = g[y][x];
-      if (v === '#') { cx.globalAlpha = 0.4; cx.fillStyle = acc; cx.fillRect(x * c + 1, y * c + 1, c - 2, c - 2); cx.globalAlpha = 1; }
-      else if (v === '.' || v === '*') { cx.fillStyle = fg; cx.beginPath(); cx.arc(x * c + c / 2, y * c + c / 2, v === '*' ? c * 0.27 : c * 0.09, 0, 7); cx.fill(); }
+      if (v === '#') { cx.fillStyle = '#16257a'; gfxRR(cx, x * c + 1, y * c + 1, c - 2, c - 2, c * 0.28); cx.fill(); cx.strokeStyle = '#4d7cff'; cx.lineWidth = 1.5; cx.stroke(); }
+      else if (v === '.' || v === '*') { cx.fillStyle = '#ffe9b0'; cx.beginPath(); cx.arc(x * c + c / 2, y * c + c / 2, v === '*' ? c * 0.27 : c * 0.09, 0, 7); cx.fill(); }
     }
     const a = Math.atan2(pac.dy, pac.dx || (pac.dy ? 0 : 1)), mo = tickN % 6 < 3 ? 0.55 : 0.12;
     cx.fillStyle = '#ffd34d'; cx.beginPath(); cx.moveTo(pac.x * c + c / 2, pac.y * c + c / 2); cx.arc(pac.x * c + c / 2, pac.y * c + c / 2, c / 2 - 1, a + mo, a + 2 * Math.PI - mo); cx.closePath(); cx.fill();
+    cx.fillStyle = '#222'; cx.beginPath(); cx.arc(pac.x * c + c / 2 + Math.cos(a - 1.1) * c * 0.2, pac.y * c + c / 2 + Math.sin(a - 1.1) * c * 0.2, c * 0.07, 0, 7); cx.fill();
     ghosts.forEach(gh => {
       const gx = gh.x * c, gy = gh.y * c;
       cx.fillStyle = power > 0 ? (power < 12 && tickN % 4 < 2 ? '#fff' : '#2b4cff') : gh.col;
-      cx.beginPath(); cx.arc(gx + c / 2, gy + c / 2, c / 2 - 1, Math.PI, 0); cx.lineTo(gx + c - 1, gy + c - 1); cx.lineTo(gx + 1, gy + c - 1); cx.closePath(); cx.fill();
-      cx.fillStyle = '#fff'; cx.fillRect(gx + c * 0.28, gy + c * 0.3, c * 0.15, c * 0.2); cx.fillRect(gx + c * 0.58, gy + c * 0.3, c * 0.15, c * 0.2);
+      cx.beginPath(); cx.arc(gx + c / 2, gy + c / 2, c / 2 - 1, Math.PI, 0); cx.lineTo(gx + c - 1, gy + c - 1);
+      for (let k = 0; k < 3; k++) { const bx = gx + c - 1 - (k + 1) * (c - 2) / 3; cx.lineTo(bx + (c - 2) / 6, gy + c - 1 - c * 0.14); cx.lineTo(bx, gy + c - 1); }
+      cx.closePath(); cx.fill();
+      cx.fillStyle = '#fff'; cx.beginPath(); cx.ellipse(gx + c * 0.35, gy + c * 0.4, c * 0.12, c * 0.16, 0, 0, 7); cx.ellipse(gx + c * 0.65, gy + c * 0.4, c * 0.12, c * 0.16, 0, 0, 7); cx.fill();
+      cx.fillStyle = '#1a2cff'; cx.beginPath(); cx.arc(gx + c * 0.35 + (gh.dx || 0) * c * 0.05, gy + c * 0.42 + (gh.dy || 0) * c * 0.05, c * 0.06, 0, 7); cx.arc(gx + c * 0.65 + (gh.dx || 0) * c * 0.05, gy + c * 0.42 + (gh.dy || 0) * c * 0.05, c * 0.06, 0, 7); cx.fill();
     });
     document.getElementById('gscore').textContent = over ? `${won ? 'You win! 🎉' : 'Game over'} — score ${score}. Tap to restart` : `Score ${score} · Lives ${'❤️'.repeat(lives)}`;
   }, 50);
@@ -3318,6 +3414,7 @@ document.addEventListener('click', e => {
   const a = e.target.closest('.epc'); if (a && !e.target.closest('button')) a.classList.toggle('rev');
 });
 const PATCHNOTES = [
+  { v: '63', c: ['Mini-games update. Minesweeper: every board can be solved by logic, no more 50/50 guesses. Pong: fixed the ball getting stuck at the top of the screen. Rhythm with your own song: the game now finds the tempo and puts the arrows on the beat, plus Sync − / + buttons to fix any delay. Graphics: new look for Flappy (real bird, sky, pipes), Snake (grass field, eyes, apple), Pac-Man (night background, neon walls, ghosts) and Rhythm (glowing background).'] },
   { v: '62', c: ['Rhythm: the “My song” file picker no longer filters by type, so your mp3 / m4a / wav can always be selected.'] },
   { v: '61', c: ['Rhythm: play your own music! Pick an audio file (mp3, m4a, wav…) in the Rhythm menu; the game finds the beats in the first 2 minutes and builds the arrows from them. Scores with your own song are not added to the leaderboard.'] },
   { v: '60', c: ['Watch Party: new 🍿 Party hub button (next to the reactions). Vote for the next title (4 options from the queue or your list, live counts, 🏆 winner opens for you), a shared party queue (➕ Party queue button on title pages), and a Watched together history.'] },
