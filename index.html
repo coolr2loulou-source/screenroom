@@ -297,7 +297,7 @@ body.theater #next{position:fixed;left:50%;transform:translateX(-50%);bottom:cal
 <p class="attr">This product uses the TMDB API but is not endorsed or certified by TMDB. <span id="contact"></span></p>
 
 <script>
-const APP_VERSION = '61';
+const APP_VERSION = '62';
 const IMG = 'https://image.tmdb.org/t/p/';
 const app = document.getElementById('app');
 const q = document.getElementById('q');
@@ -743,7 +743,7 @@ function playFnf() {
       <label><input type="checkbox" id="fnfmid" ${opt.mid ? 'checked' : ''}> Center the bars (middlescroll)</label><br>
       <label><input type="checkbox" id="fnfdown" ${opt.down ? 'checked' : ''}> Put the bars down (downscroll)</label><br>
       <select id="fnfsong">${SONGS.map((x, i) => `<option value="${i}"${opt.song === i ? ' selected' : ''}>${x.n}</option>`).join('')}</select> <select id="fnfdiff">${['easy', 'normal', 'hard'].map(d => `<option value="${d}"${opt.diff === d ? ' selected' : ''}>${d}</option>`).join('')}</select>
-      <p class="meta">🎵 My song: <input type="file" id="fnfmy" accept="audio/*"> <span id="fnfmyst">${my ? '✅ ' + esc(my.name) + ' <button id="fnfclr">✖</button>' : ''}</span></p>
+      <p class="meta">🎵 My song: <input type="file" id="fnfmy"> <span id="fnfmyst">${my ? '✅ ' + esc(my.name) + ' <button id="fnfclr">✖</button>' : ''}</span></p>
       <p><button id="fnfgo">▶ Start</button></p></div>`;
     document.getElementById('fnfmid').onchange = ev => { opt.mid = ev.target.checked; save('fnf_mid', opt.mid); };
     document.getElementById('fnfdown').onchange = ev => { opt.down = ev.target.checked; save('fnf_down', opt.down); };
@@ -3318,6 +3318,7 @@ document.addEventListener('click', e => {
   const a = e.target.closest('.epc'); if (a && !e.target.closest('button')) a.classList.toggle('rev');
 });
 const PATCHNOTES = [
+  { v: '62', c: ['Rhythm: the “My song” file picker no longer filters by type, so your mp3 / m4a / wav can always be selected.'] },
   { v: '61', c: ['Rhythm: play your own music! Pick an audio file (mp3, m4a, wav…) in the Rhythm menu; the game finds the beats in the first 2 minutes and builds the arrows from them. Scores with your own song are not added to the leaderboard.'] },
   { v: '60', c: ['Watch Party: new 🍿 Party hub button (next to the reactions). Vote for the next title (4 options from the queue or your list, live counts, 🏆 winner opens for you), a shared party queue (➕ Party queue button on title pages), and a Watched together history.'] },
   { v: '59', c: ['Home: pin your favorite genres (Movies / Series tab, pick a genre, tap ☆ Pin to Home) to get a row for each on Home. Settings: new Auto light/dark theme by time of day and Spoiler-free mode (blurs unwatched episode images and summaries, tap an episode to reveal it). Movie pages: the saga row now shows how many movies you watched (e.g. 3/5). Posters: hold a poster to preview its trailer muted.'] },
