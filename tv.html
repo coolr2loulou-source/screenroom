@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#141922">
+  <title>Screenroom TV</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #141922; }
+    #screenroom-frame { display: block; width: 100%; height: 100%; border: 0; background: #141922; }
+    #tv-hint {
+      position: fixed;
+      right: 18px;
+      bottom: 14px;
+      z-index: 5;
+      max-width: calc(100vw - 36px);
+      padding: 8px 12px;
+      border-radius: 8px;
+      color: #ece9e2;
+      background: rgba(20, 25, 34, .82);
+      font: 14px/1.4 system-ui, sans-serif;
+      opacity: .8;
+      pointer-events: none;
+    }
+    #tv-error {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      padding: 32px;
+      color: #ece9e2;
+      background: #141922;
+      font: 18px/1.5 system-ui, sans-serif;
+    }
+    #tv-error.show { display: block; }
+  </style>
+</head>
+<body>
+  <iframe
+    id="screenroom-frame"
+    title="Screenroom TV"
+    allow="autoplay; fullscreen; picture-in-picture"
+    allowfullscreen
+  ></iframe>
+
+  <div id="tv-hint">Use the remote arrows to move · OK to select · Back to return</div>
+  <div id="tv-error" role="alert">
+    <h2>Screenroom could not load</h2>
+    <p>Check that <strong>index.html</strong> is in the same GitHub Pages folder as <strong>tv.html</strong>.</p>
+    <p>Try opening the main Screenroom page directly to check that the site is online.</p>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      var frame = document.getElementById('screenroom-frame');
+      var errorBox = document.getElementById('tv-error');
+      var params = new URLSearchParams(window.location.search);
+
+      // The query flag is harmless on the current main branch and prevents
+      // a redirect loop if TV detection is added to index.html later.
+      params.set('tv', '1');
+      var appUrl = new URL('./index.html', window.location.href);
+      appUrl.search = params.toString();
+      appUrl.hash = window.location.hash;
+      frame.src = appUrl.toString();
+
+      var childDocument = null;
+      var childWindow = null;
+      var focusObserver = null;
+
+      function isVisible(element) {
+        if (!element || !element.isConnected || element.disabled) return false;
+        var rect = element.getBoundingClientRect();
+        var style = childWindow.getComputedStyle(element);
+        return rect.width > 0 && rect.height > 0 &&
+          style.display !== 'none' &&
+          style.visibility !== 'hidden' &&
+          Number(style.opacity) !== 0;
+      }
+
+      function getFocusableItems() {
+        var selector = [
+          'a[href]',
+          'button:not([disabled])',
+          'input:not([type="hidden"]):not([disabled])',
+          'select:not([disabled])',
+          'textarea:not([disabled])',
+          '[tabindex]:not([tabindex="-1"])',
+          '.card', '.ccard', '.epc', '.scard', '.chip'
+        ].join(',');
+
+        return Array.prototype.slice.call(childDocument.querySelectorAll(selector))
+          .filter(function (element) {
+            if (!isVisible(element)) return false;
+            // Cards are often clickable divs without tabindex in the desktop UI.
+            // Make those cards keyboard-focusable for TV remotes.
+            if (!element.hasAttribute('tabindex')) element.setAttribute('tabindex', '0');
+            return true;
+          });
+      }
+
+      function focusFirstItem() {
+        var items = getFocusableItems();
+        if (!items.length) return;
+
+        var active = childDocument.activeElement;
+        if (active === childDocument.body || active === childDocument.documentElement || !isVisible(active)) {
+          items[0].focus();
+          items[0].scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        }
+      }
+
+      function moveFocus(key) {
+        var items = getFocusableItems();
+        var current = childDocument.activeElement;
+        if (!items.length) return;
+
+        if (items.indexOf(current) === -1) {
+          focusFirstItem();
+          return;
+        }
+
+        var currentRect = current.getBoundingClientRect();
+        var currentX = currentRect.left + currentRect.width / 2;
+        var currentY = currentRect.top + currentRect.height / 2;
+        var best = null;
+        var bestScore = Infinity;
+
+        items.forEach(function (candidate) {
+          if (candidate === current) return;
+          var rect = candidate.getBoundingClientRect();
+          var dx = rect.left + rect.width / 2 - currentX;
+          var dy = rect.top + rect.height / 2 - currentY;
+          var primary;
+          var secondary;
+
+          if (key === 'ArrowRight') {
+            if (dx <= 4) return;
+            primary = dx;
+            secondary = Math.abs(dy);
+          } else if (key === 'ArrowLeft') {
+            if (dx >= -4) return;
+            primary = -dx;
+            secondary = Math.abs(dy);
+          } else if (key === 'ArrowDown') {
+            if (dy <= 4) return;
+            primary = dy;
+            secondary = Math.abs(dx);
+          } else {
+            if (dy >= -4) return;
+            primary = -dy;
+            secondary = Math.abs(dx);
+          }
+
+          var score = primary + secondary * 2.2;
+          if (score < bestScore) {
+            bestScore = score;
+            best = candidate;
+          }
+        });
+
+        if (best) {
+          best.focus();
+          best.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        }
+      }
+
+      function handleRemoteKey(event) {
+        if (!childDocument || !childWindow) return;
+        var key = event.key;
+        var active = childDocument.activeElement;
+        var typing = active && (
+          /^(INPUT|TEXTAREA)$/.test(active.tagName) || active.isContentEditable
+        );
+
+        // Preserve normal text editing and cursor movement inside text fields.
+        if (typing && key !== 'Escape') return;
+
+        if (key === 'ArrowUp' || key === 'ArrowDown' ||
+            key === 'ArrowLeft' || key === 'ArrowRight') {
+          moveFocus(key);
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+
+        if (key === 'Enter' || key === 'OK' || key === 'Select') {
+          if (active && active !== childDocument.body &&
+              !/^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(active.tagName)) {
+            event.preventDefault();
+            active.click();
+          }
+          return;
+        }
+
+        if (key === 'Escape' || key === 'Backspace' || key === 'BrowserBack' ||
+            key === 'GoBack' || key === 'XF86Back') {
+          var modal = childDocument.querySelector('.modal, #lightbox');
+          if (modal) {
+            var closeButton = modal.querySelector('button');
+            if (closeButton) closeButton.click();
+            else modal.remove();
+          } else if (childDocument.body.classList.contains('theater')) {
+            var exitButton = childDocument.getElementById('texit');
+            if (exitButton) exitButton.click();
+          } else {
+            var backButton = childDocument.getElementById('back');
+            var homeButton = childDocument.getElementById('home');
+            if (backButton && childWindow.getComputedStyle(backButton).display !== 'none') {
+              backButton.click();
+            } else if (homeButton) {
+              homeButton.click();
+            }
+          }
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }
+
+      function addTVStyles() {
+        if (childDocument.getElementById('screenroom-tv-style')) return;
+
+        var style = childDocument.createElement('style');
+        style.id = 'screenroom-tv-style';
+        style.textContent = [
+          'html, body { min-height:100%; }',
+          'body { font-size:18px; }',
+          'header { gap:14px 20px; padding:18px 34px 14px; }',
+          'main { max-width:1900px; padding:28px 36px 56px; }',
+          '.grid { grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:20px; }',
+          '.grid.sm { grid-template-columns:repeat(auto-fill,minmax(145px,1fr)); gap:16px; }',
+          '.rail .card { flex-basis:205px; }',
+          'button, nav button, .filters select, .filters input { min-height:48px; font-size:18px; padding:10px 18px; }',
+          '#q { min-height:48px; font-size:18px; }',
+          'nav { gap:10px; }',
+          '.card div { font-size:17px; padding:10px 12px; }',
+          '.card:focus, .ccard:focus, .epc:focus, .scard:focus, button:focus, a:focus, input:focus, select:focus, textarea:focus, [tabindex="0"]:focus { outline:4px solid var(--accent, #ff7a45) !important; outline-offset:4px; transform:scale(1.035); z-index:4; }',
+          '.card, button, .ccard, .epc, .scard, .chip, a, [tabindex="0"] { scroll-margin:100px; }',
+          '.arr { opacity:.95; }',
+          '@media (max-width:900px) { header { flex-wrap:wrap; } main { padding:20px; } }'
+        ].join('\n');
+        childDocument.head.appendChild(style);
+        childDocument.body.classList.add('screenroom-tv');
+      }
+
+      function installTVMode() {
+        try {
+          childDocument = frame.contentDocument;
+          childWindow = frame.contentWindow;
+          if (!childDocument || !childDocument.body || !childDocument.head) return;
+        } catch (error) {
+          errorBox.classList.add('show');
+          return;
+        }
+
+        addTVStyles();
+        childDocument.addEventListener('keydown', handleRemoteKey, true);
+
+        // Some TV browsers deliver remote key events to the outer page while
+        // the iframe itself does not have keyboard focus. Handle both cases.
+        document.addEventListener('keydown', function (event) {
+          if (event.target === frame || event.target === document.body || event.target === document.documentElement) {
+            handleRemoteKey(event);
+          }
+        }, true);
+
+        if (focusObserver) focusObserver.disconnect();
+        focusObserver = new childWindow.MutationObserver(function () {
+          if (!childDocument.activeElement || childDocument.activeElement === childDocument.body) {
+            focusFirstItem();
+          }
+        });
+        focusObserver.observe(childDocument.body, { childList: true, subtree: true });
+
+        childWindow.addEventListener('load', focusFirstItem);
+        childWindow.setTimeout(focusFirstItem, 700);
+        childWindow.setTimeout(focusFirstItem, 1800);
+      }
+
+      frame.addEventListener('load', function () {
+        errorBox.classList.remove('show');
+        try { frame.focus(); } catch (error) {}
+        installTVMode();
+      });
+
+      frame.addEventListener('error', function () {
+        errorBox.classList.add('show');
+      });
+    })();
+  </script>
+</body>
+</html>
