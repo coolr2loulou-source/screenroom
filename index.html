@@ -12,7 +12,7 @@
 
     var ua = navigator.userAgent || '';
     var isAppleMobile = /iPhone|iPad|iPod/i.test(ua);
-    var isTV = !isAppleMobile && /SmartTV|SMART-TV|HbbTV|NetCast|webOS|Tizen|BRAVIA|GoogleTV|Google TV|Android TV|AFT[A-Z0-9]|Fire TV|Roku|AppleTV|Apple TV|Viera|Vidaa|Aquos|DTV|InettvBrowser/i.test(ua);
+    var userAgentSaysTV = /SmartTV|SMART-TV|HbbTV|NetCast|webOS|Tizen|BRAVIA|GoogleTV|Google TV|Android TV|Android.*TV|TV.*Android|AFT[A-Z0-9]|Fire TV|Roku|AppleTV|Apple TV|Viera|Vidaa|Aquos|DTV|InettvBrowser/i.test(ua);\n    var largeRemoteDisplay = window.screen && screen.width >= 1600 && screen.height >= 800 &&\n      window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches;\n    var isTV = !isAppleMobile && (userAgentSaysTV || largeRemoteDisplay);
 
     if (isTV) {
       var tvUrl = new URL('./tv.html', window.location.href);
