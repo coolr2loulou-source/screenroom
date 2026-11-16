@@ -15,7 +15,10 @@
     var isTV = !isAppleMobile && /SmartTV|SMART-TV|HbbTV|NetCast|webOS|Tizen|BRAVIA|GoogleTV|Google TV|Android TV|AFT[A-Z0-9]|Fire TV|Roku|AppleTV|Apple TV|Viera|Vidaa|Aquos|DTV|InettvBrowser/i.test(ua);
 
     if (isTV) {
-      window.location.replace(new URL('./tv.html', window.location.href).toString());
+      var tvUrl = new URL('./tv.html', window.location.href);
+      tvUrl.search = window.location.search;
+      tvUrl.hash = window.location.hash;
+      window.location.replace(tvUrl.toString());
     }
   } catch (error) {
     // Leave the standard website available if device detection fails.
