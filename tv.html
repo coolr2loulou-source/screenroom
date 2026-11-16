@@ -19,11 +19,14 @@
   </style>
 </head>
 <body>
-  <iframe id="screenroom" src="./index.html?tv=1" title="Screenroom TV" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>
+  <iframe id="screenroom" title="Screenroom TV" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>
   <div id="tv-status" aria-hidden="true">Screenroom TV · Arrow keys to navigate · OK to select · Back to return</div>
   <script>
     (function () {
       var frame = document.getElementById('screenroom');
+      var params = new URLSearchParams(window.location.search);
+      params.set('tv', '1');
+      frame.src = './index.html?' + params.toString() + window.location.hash;
 
       function installTVMode() {
         var doc, win;
