@@ -4,6 +4,31 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Screenroom</title>
+<script id="screenroom-tv-autodetect">
+(function () {
+  try {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('tv') === '1') return;
+
+    var ua = navigator.userAgent || '';
+    var isAppleMobile = /iPhone|iPad|iPod/i.test(ua);
+    var userAgentSaysTV = /SmartTV|SMART-TV|HbbTV|NetCast|webOS|Tizen|BRAVIA|GoogleTV|Google TV|Android TV|Android.*TV|TV.*Android|AFT[A-Z0-9]|Fire TV|Roku|AppleTV|Apple TV|Viera|Vidaa|Aquos|DTV|InettvBrowser/i.test(ua);
+    var largeRemoteDisplay = window.screen && screen.width >= 1600 && screen.height >= 800 &&
+      window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+    var isTV = !isAppleMobile && (userAgentSaysTV || largeRemoteDisplay);
+
+    if (isTV) {
+      var tvUrl = new URL('./tv.html', window.location.href);
+      tvUrl.search = window.location.search;
+      tvUrl.hash = window.location.hash;
+      window.location.replace(tvUrl.toString());
+    }
+  } catch (error) {
+    // Leave the standard website available if device detection fails.
+  }
+})();
+</script>
+
 <link id="favicon" rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://api.themoviedb.org">
@@ -31,7 +56,7 @@ body.light header{background:rgba(244,246,249,0.85)}
 .logo span{color:var(--accent)}
 
 .search-wrap{flex:1 1 180px;min-width:0;max-width:480px;position:relative}
-#q{width:100%;padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--text);font-size:16px;-webkit-appearance:none}
+#q{width:100%;padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--text);font-size:16px;-webkit-appearance:none;appearance:none}
 .search-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-top:6px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:20;display:none;max-height:240px;overflow-y:auto}
 .search-dropdown.open{display:block}
 .sdrop-item{padding:8px 14px;cursor:pointer;font-size:14px;display:flex;justify-content:space-between;align-items:center}
@@ -50,7 +75,7 @@ main{padding:20px max(16px,env(safe-area-inset-right)) 40px max(16px,env(safe-ar
 .card{background:var(--surface);border-radius:var(--radius);overflow:hidden;cursor:pointer;border:1px solid var(--line);box-shadow:0 2px 10px rgba(0,0,0,.25);position:relative;transition:transform .2s,border-color .2s,box-shadow .2s}
 .card:hover{transform:translateY(-4px);border-color:var(--accent);box-shadow:0 6px 20px rgba(255,122,69,0.3)}
 .card img{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:#222a39}
-.card div{padding:8px 10px;font-size:14px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+.card div{padding:8px 10px;font-size:14px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden}
 .card small{color:var(--muted);display:block}
 .card .prog{height:3px;padding:0;background:var(--line)}
 .x{position:absolute;top:6px;right:6px;width:30px;height:30px;padding:0;border-radius:50%;background:rgba(20,25,34,.85);color:#fff;font-size:18px;line-height:1;border:0;cursor:pointer}
@@ -114,7 +139,7 @@ h2.sec{margin:0 0 12px;font-size:21px}
   .hero{min-height:210px}
   .hero-in{padding:18px}
   .hero h1{font-size:24px}
-  .hero p{font-size:14px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+  .hero p{font-size:14px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden}
   .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
   #totop{bottom:calc(74px + env(safe-area-inset-bottom));right:14px;padding:8px 14px;font-size:13px}
 }
@@ -183,7 +208,7 @@ body.theater nav{display:none}
 .eb{padding:12px;flex:1;display:flex;flex-direction:column}
 .eb h3{margin:0 0 4px;font-size:16px}
 .eb .meta{margin:0}
-.ov{margin:8px 0 0;font-size:14px;opacity:.85;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+.ov{margin:8px 0 0;font-size:14px;opacity:.85;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden}
 .ov.open{display:block}
 body.nospoil .epc:not(.rev):not(:has(.wbtn.on)) .still img{filter:blur(14px)}
 body.nospoil .epc:not(.rev):not(:has(.wbtn.on)) .ov,body.nospoil .epc:not(.rev):not(:has(.wbtn.on)) h3{filter:blur(6px)}
@@ -2774,7 +2799,7 @@ function bindBackup() {
         if (d.wtime && typeof d.wtime === 'object') { const w = getWT(); ['movie', 'tv'].forEach(k => { w[k] = Math.max(+w[k] || 0, +d.wtime[k] || 0); }); try { localStorage.setItem('wtime', JSON.stringify(w)); } catch (e2) {} }
         if (d.myrate && typeof d.myrate === 'object' && !Array.isArray(d.myrate)) { try { localStorage.setItem('myrate', JSON.stringify({ ...d.myrate, ...getMR() })); } catch (e2) {} }
         if (d.lb && typeof d.lb === 'object' && !Array.isArray(d.lb)) Object.keys(d.lb).forEach(n => mergeLB(n, d.lb[n]));
-        if (d.key && !key) { key = String(d.key); try { localStorage.setItem('tmdb_key', key); } catch (e) {} }
+        if (d.key) { key = String(d.key); try { localStorage.setItem('tmdb_key', key); } catch (e) {} }
         if (d.profile && typeof d.profile === 'object') saveUserProfile(d.profile.name, d.profile.pfp);
         if (tab === 'list') listView(); else if (key) home();
         say('Backup imported.');
