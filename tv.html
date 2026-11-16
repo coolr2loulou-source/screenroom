@@ -178,7 +178,7 @@
         win.setTimeout(focusFirst, 1800);
       }
 
-      frame.addEventListener('load', installTVMode);
+      frame.addEventListener('load', function () {\n        try { frame.focus(); } catch (error) {}\n        installTVMode();\n      });
     })();
   </script>
 </body>
