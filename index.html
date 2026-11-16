@@ -4,6 +4,25 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Screenroom</title>
+<script id="screenroom-tv-autodetect">
+(function () {
+  try {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('tv') === '1') return;
+
+    var ua = navigator.userAgent || '';
+    var isAppleMobile = /iPhone|iPad|iPod/i.test(ua);
+    var isTV = !isAppleMobile && /SmartTV|SMART-TV|HbbTV|NetCast|webOS|Tizen|BRAVIA|GoogleTV|Google TV|Android TV|AFT[A-Z0-9]|Fire TV|Roku|AppleTV|Apple TV|Viera|Vidaa|Aquos|DTV|InettvBrowser/i.test(ua);
+
+    if (isTV) {
+      window.location.replace(new URL('./tv.html', window.location.href).toString());
+    }
+  } catch (error) {
+    // Leave the standard website available if device detection fails.
+  }
+})();
+</script>
+
 <link id="favicon" rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://api.themoviedb.org">
