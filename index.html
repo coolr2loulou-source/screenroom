@@ -2796,7 +2796,7 @@ function bindBackup() {
         if (d.wtime && typeof d.wtime === 'object') { const w = getWT(); ['movie', 'tv'].forEach(k => { w[k] = Math.max(+w[k] || 0, +d.wtime[k] || 0); }); try { localStorage.setItem('wtime', JSON.stringify(w)); } catch (e2) {} }
         if (d.myrate && typeof d.myrate === 'object' && !Array.isArray(d.myrate)) { try { localStorage.setItem('myrate', JSON.stringify({ ...d.myrate, ...getMR() })); } catch (e2) {} }
         if (d.lb && typeof d.lb === 'object' && !Array.isArray(d.lb)) Object.keys(d.lb).forEach(n => mergeLB(n, d.lb[n]));
-        if (d.key && !key) { key = String(d.key); try { localStorage.setItem('tmdb_key', key); } catch (e) {} }
+        if (d.key) { key = String(d.key); try { localStorage.setItem('tmdb_key', key); } catch (e) {} }
         if (d.profile && typeof d.profile === 'object') saveUserProfile(d.profile.name, d.profile.pfp);
         if (tab === 'list') listView(); else if (key) home();
         say('Backup imported.');
