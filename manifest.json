@@ -1,0 +1,17 @@
+{
+  "background_color": "#ffffff",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "Screenroom",
+  "orientation": "landscape",
+  "scope": "/screenroom/",
+  "short_name": "Screenroom",
+  "start_url": "/screenroom/tv.html",
+  "theme_color": "#141922",
+  "id": "screenroom.app",
+  "description": "free app to watch movie",
+  "lang": "en",
+  "categories": [
+    "entertainment"
+  ]
+}
