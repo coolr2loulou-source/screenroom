@@ -404,7 +404,7 @@ function showWrapped() {
   o.onclick = ev => { if (ev.target === o || ev.target.id === 'wrapx') o.remove(); };
 }
 let G = null;
-const playFn = g => ({ pong: playPong, ttt: playTtt, c4: playC4 })[g];
+const playFn = g => ({ pong: playPong, ttt: playTtt, c4: playC4, fight: playFight })[g];
 const gAlive = () => !!(document.getElementById('gcv') || document.getElementById('gttt'));
 const sendGame = m => {
   if (!party.active) return;
@@ -674,7 +674,7 @@ function handleGameMsg(m) {
   if (m.op === 'invite') {
     const old = document.getElementById('gtoast'); if (old) old.remove();
     const t = document.createElement('div'); t.id = 'gtoast';
-    t.innerHTML = `<span>${esc(m.name || 'A friend')} invites you to ${({ pong: 'Pong 🏓', ttt: 'Tic-Tac-Toe ❌⭕', c4: 'Connect 4 🔴' })[m.game] || 'a game'}</span><button id="gjoin">Join</button><button id="gno">✕</button>`;
+    t.innerHTML = `<span>${esc(m.name || 'A friend')} invites you to ${({ pong: 'Pong 🏓', ttt: 'Tic-Tac-Toe ❌⭕', c4: 'Connect 4 🔴', fight: 'Fighter 🥊' })[m.game] || 'a game'}</span><button id="gjoin">Join</button><button id="gno">✕</button>`;
     document.body.appendChild(t);
     document.getElementById('gno').onclick = () => t.remove();
     document.getElementById('gjoin').onclick = async () => {
@@ -709,7 +709,7 @@ function gamesView() {
       <div class="gcard"><div class="gi">🧠</div><b>Memory</b><div><button data-g="memory" data-m="solo">Play</button></div></div>
       <div class="gcard"><div class="gi">🐤</div><b>Flappy</b><div><button data-g="flappy" data-m="solo">Play</button></div></div>
       <div class="gcard"><div class="gi">💣</div><b>Minesweeper</b><div><button data-g="mines" data-m="solo">Play</button></div></div>
-      <div class="gcard"><div class="gi">🥊</div><b>Fighter</b><div><button data-g="fight" data-m="solo">Play</button></div></div>
+      <div class="gcard"><div class="gi">🥊</div><b>Fighter</b><div><button data-g="fight" data-m="solo">Play</button>${fr('fight')}</div></div>
     </div><div id="gstage"></div><div id="gboard" class="row"></div></div>`;
   renderBoard();
   const gsnd = document.getElementById('gsnd');
@@ -730,7 +730,7 @@ function gamesView() {
     else if (g === 'memory') playMemory();
     else if (g === 'flappy') playFlappy();
     else if (g === 'mines') playMines();
-    else if (g === 'fight') playFight();
+    else if (g === 'fight' && mode !== 'online') playFight();
     else if (mode === 'online') {
       const sid = Math.random().toString(36).slice(2, 8);
       G = { game: g, role: 'a', sid, wait: true };
@@ -1704,8 +1704,20 @@ const playFight = (() => {
     '#ftpause{position:absolute;top:8px;right:10px;width:42px;height:42px;font-size:18px}' +
     '#ftrot{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:#fff;font:700 15px system-ui;text-align:center;background:rgba(0,0,0,.65);padding:8px 14px;border-radius:10px;pointer-events:none;opacity:0;transition:opacity .6s}';
 
-  return function playFight() {
+  let CUR = null;
+  const FK = ['x', 'y', 'vx', 'vy', 'fc', 'hp', 'meter', 'st', 't', 'mv', 'mt', 'flash', 'shake', 'low', 'cb', 'spin', 'dashDir', 'wt', 'chit', 'cdmg', 'cshow', 'cc'];
+  const r1 = v => Math.round(v * 10) / 10;
+  const snapOf = (S, ev) => ({ ph: S.phase, pt: S.pt, rn: S.rnd, w: S.wins, tm: S.timer, sl: S.slow, fr: S.freeze, sf: S.sf, hs: S.hitstop, ko: S.ko, to: S.timeout ? 1 : 0, dn: S.done ? S.done.w : -1, mc: S.maxc,
+    f: S.f.map(f => FK.map(k => { const v = f[k]; return typeof v === 'number' ? r1(v) : v === true ? 1 : v === false ? 0 : v; })),
+    pr: S.pr.map(p => [p.o, r1(p.x), r1(p.y), r1(p.vx), p.w, p.h, p.kind, p.t]), ev });
+
+  return function playFight(online) {
+    if (CUR) CUR.close(true);
     if (document.getElementById('ftov')) return;
+    const onl = online === true && typeof G !== 'undefined' && !!G && !!G.sid;
+    const me = onl ? (G.role === 'a' ? 0 : 1) : 0, opp = 1 - me, isHost = !onl || G.role === 'a';
+    const net = { q: [], last: 0, inj: null, lastIn: performance.now(), rmMe: false, rmOpp: false, evb: [], n: 0, rt: 0 };
+    const send = o => { if (onl) { try { sendGame(Object.assign({ sid: G.sid }, o)); } catch (e) {} } };
     const gst = document.getElementById('gstage'); if (gst) gst.innerHTML = '<p class="meta" style="text-align:center">The Fighter is open full screen. Use Quit in its pause menu to come back.</p>';
     const lsg = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } };
     const lss = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
@@ -1766,11 +1778,11 @@ const playFight = (() => {
     const ctlShow = () => { const on = touchDev && !kbUsed && sc === 'fight' && !paused; ctl.classList.toggle('on', on); sp.forEach(e => { e.style.display = OPT.easy ? 'flex' : 'none'; }); thr.style.display = 'flex'; };
 
     // ---------- keyboard / gamepad ----------
-    const keys = {}, latch = {};
+    const keys = {}, klat = {}, latch = {};
     const MAPA = { ArrowUp: KB.U, KeyW: KB.U, ArrowDown: KB.D, KeyS: KB.D, ArrowLeft: KB.L, KeyA: KB.L, ArrowRight: KB.R, KeyD: KB.R, KeyZ: KB.LP, KeyU: KB.LP, KeyX: KB.HP, KeyI: KB.HP, KeyC: KB.LK, KeyJ: KB.LK, KeyV: KB.HK, KeyK: KB.HK };
     const MAP1 = { KeyW: KB.U, KeyS: KB.D, KeyA: KB.L, KeyD: KB.R, KeyF: KB.LP, KeyG: KB.HP, KeyV: KB.LK, KeyB: KB.HK };
     const MAP2 = { ArrowUp: KB.U, ArrowDown: KB.D, ArrowLeft: KB.L, ArrowRight: KB.R, KeyK: KB.LP, KeyL: KB.HP, Comma: KB.LK, Period: KB.HK };
-    const kbm = map => { let m = 0; for (const k in map) if (keys[k]) m |= map[k]; return m; };
+    const kbm = map => { let m = 0; for (const k in map) if (keys[k] || klat[k]) m |= map[k]; return m; };
     const pads = () => { try { return [].slice.call(navigator.getGamepads ? navigator.getGamepads() : []).filter(g => g && g.connected); } catch (e) { return []; } };
     function padMask(g) {
       const b = i => !!(g.buttons[i] && g.buttons[i].pressed), ax = g.axes[0] || 0, ay = g.axes[1] || 0; let m = 0;
@@ -1801,7 +1813,7 @@ const playFight = (() => {
           else if (code === 'Escape' || code === 'Backspace') latch.back = 1;
           else if (code === 'KeyP') latch.start = 1;
         }
-        keys[code] = 1; if (!kbUsed) { kbUsed = true; ctlShow(); }
+        keys[code] = 1; klat[code] = 1; if (!kbUsed) { kbUsed = true; ctlShow(); }
         ensureAc();
       } else keys[code] = 0;
     }
@@ -1810,7 +1822,7 @@ const playFight = (() => {
     ov.addEventListener('pointerdown', () => { ensureAc(); if (kbUsed) { kbUsed = false; ctlShow(); } });
     ov.addEventListener('contextmenu', e => e.preventDefault());
     const onResize = () => layout(); window.addEventListener('resize', onResize); window.addEventListener('orientationchange', onResize);
-    const onVis = () => { if (document.hidden && sc === 'fight' && !paused) setPause(true); }; document.addEventListener('visibilitychange', onVis);
+    const onVis = () => { if (document.hidden && sc === 'fight' && !paused && !onl) setPause(true); }; document.addEventListener('visibilitychange', onVis);
     let toastT = 0, toastS = ''; const toast = s => { toastS = s; toastT = 150; };
     const onPad = e => toast('Controller connected'); window.addEventListener('gamepadconnected', onPad);
 
@@ -1870,10 +1882,10 @@ const playFight = (() => {
       for (let i = hot.length - 1; i >= 0; i--) { const h = hot[i]; if (px >= h.x && px <= h.x + h.w && py >= h.y && py <= h.y + h.h) { ev.preventDefault(); h.fn(); return; } }
     });
     function setPause(p) { paused = p; pauseI = 0; tmask.dir = 0; tmask.btn = 0; tmask.lat = 0; if (p) snd('back'); ctlShow(); }
-    function close() {
-      closed = true; cancelAnimationFrame(raf); window.removeEventListener('keydown', kd, true); window.removeEventListener('keyup', ku, true);
+    function close(keepG) {
+      closed = true; CUR = null; cancelAnimationFrame(raf); window.removeEventListener('keydown', kd, true); window.removeEventListener('keyup', ku, true);
       window.removeEventListener('resize', onResize); window.removeEventListener('orientationchange', onResize); document.removeEventListener('visibilitychange', onVis); window.removeEventListener('gamepadconnected', onPad);
-      try { ac && ac.close(); } catch (e) {} ov.remove(); document.body.style.overflow = prevOv; G = null;
+      try { ac && ac.close(); } catch (e) {} ov.remove(); document.body.style.overflow = prevOv; if (keepG !== true) G = null;
       try { renderBoard(); } catch (e) {}
     }
 
@@ -1899,7 +1911,7 @@ const playFight = (() => {
           if (arc.stage >= 5) { endRun(); sc = 'clear'; resI = 0; } else { arc.stage++; sc = 'vs'; vsCard = 0; lastCfg = arcadeCfg(); }
           snd('win');
         } else { sc = 'cont'; cont = { n: 9, t: 0 }; snd('ko'); }
-      } else if (mode === 'versus') { sc = 'result'; resI = 0; resData = { w }; snd('win'); }
+      } else if (mode === 'versus' || mode === 'online') { sc = 'result'; resI = 0; resData = { w }; net.rmMe = net.rmOpp = false; snd('win'); }
     }
 
     // ---------- drawing: menus ----------
@@ -1926,22 +1938,23 @@ const playFight = (() => {
       c.save(); [[mockF(0, 130, 1, false)], [mockF(2, 510, -1, false)]].forEach(a => { const f = a[0]; f.st = 'idle'; drawShadow(c, f); drawFighter(c, f, t, 1.0); }); c.restore();
     }
     function drawSelect(c, t) {
-      bgMenu(c, t); bigText(c, mode === 'versus' ? 'PLAYERS: CHOOSE YOUR FIGHTER' : 'CHOOSE YOUR FIGHTER', W / 2, 30, 24, ['#ffffff', '#ffd23a'], 1);
+      bgMenu(c, t); bigText(c, mode === 'versus' ? 'PLAYERS: CHOOSE YOUR FIGHTER' : mode === 'online' ? 'CHOOSE YOUR FIGHTER (ONLINE)' : 'CHOOSE YOUR FIGHTER', W / 2, 30, 24, ['#ffffff', '#ffd23a'], 1);
       for (let i = 0; i < 3; i++) {
-        const cxn = 120 + i * 200, ch = CH[i], x = cxn - 78, y = 54, w = 156, h = 232, hi = (sel[0] === i) || (mode === 'versus' && sel[1] === i);
+        const cxn = 120 + i * 200, ch = CH[i], x = cxn - 78, y = 54, w = 156, h = 232, hi = (sel[0] === i) || ((mode === 'versus' || mode === 'online') && sel[1] === i);
         c.fillStyle = 'rgba(10,6,24,.72)'; c.fillRect(x, y, w, h); c.strokeStyle = hi ? '#ffd23a' : 'rgba(255,255,255,.2)'; c.lineWidth = hi ? 3 : 1.5; c.strokeRect(x, y, w, h);
         c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip();
-        const f = mockF(i, cxn, 1, false); f.st = (sel[0] === i && selOk[0]) || (mode === 'versus' && sel[1] === i && selOk[1]) ? 'win' : 'idle';
+        const f = mockF(i, cxn, 1, false); f.st = (sel[0] === i && selOk[0]) || ((mode === 'versus' || mode === 'online') && sel[1] === i && selOk[1]) ? 'win' : 'idle';
         c.globalAlpha = hi ? 1 : 0.55; portrait(c, f, t * (hi ? 1 : 0.4), y + h - 76, 1.05); c.restore();
         c.textAlign = 'center'; bigText(c, ch.n, cxn, y + h - 66, 22, '#ffffff', 1); c.font = '700 11px system-ui'; c.fillStyle = '#ffd23a'; c.textBaseline = 'alphabetic'; c.fillText(ch.t.toUpperCase(), cxn, y + h - 50);
         const bar = (lab, v, yy) => { c.fillStyle = '#9aa6d8'; c.font = '700 8px system-ui'; c.textAlign = 'left'; c.fillText(lab, x + 10, yy + 6); c.fillStyle = '#26203a'; c.fillRect(x + 52, yy, 94, 7); c.fillStyle = '#ff7a45'; c.fillRect(x + 52, yy, 94 * clamp(v, 0.05, 1), 7); };
         bar('POWER', (ch.dm - 0.75) / 0.45, y + h - 40); bar('SPEED', (ch.spd - 1.9) / 1.5, y + h - 29); bar('HEALTH', (ch.hp - 800) / 400, y + h - 18);
-        if (sel[0] === i) { c.fillStyle = '#ff3b3b'; c.fillRect(x, y, 40, 16); c.fillStyle = '#fff'; c.font = '900 11px system-ui'; c.textAlign = 'center'; c.fillText('P1', x + 20, y + 12); }
-        if (mode === 'versus' && sel[1] === i) { c.fillStyle = '#2a7bff'; c.fillRect(x + w - 40, y, 40, 16); c.fillStyle = '#fff'; c.font = '900 11px system-ui'; c.textAlign = 'center'; c.fillText('P2', x + w - 20, y + 12); }
-        addHot(x, y, w, h, () => { if (!selOk[0]) { sel[0] = i; selOk[0] = true; snd('ok'); } else if (mode === 'versus' && !selOk[1]) { sel[1] = i; selOk[1] = true; snd('ok'); } });
+        if (sel[0] === i) { c.fillStyle = '#ff3b3b'; c.fillRect(x, y, 40, 16); c.fillStyle = '#fff'; c.font = '900 11px system-ui'; c.textAlign = 'center'; c.fillText(mode === 'online' ? (me === 0 ? 'YOU' : 'FRIEND') : 'P1', x + 20, y + 12); }
+        if ((mode === 'versus' || mode === 'online') && sel[1] === i) { c.fillStyle = '#2a7bff'; c.fillRect(x + w - 52, y, 52, 16); c.fillStyle = '#fff'; c.font = '900 11px system-ui'; c.textAlign = 'center'; c.fillText(mode === 'online' ? (me === 1 ? 'YOU' : 'FRIEND') : 'P2', x + w - 26, y + 12); }
+        addHot(x, y, w, h, () => { if (mode === 'online') { if (!selOk[me]) { sel[me] = i; selOk[me] = true; sendSel(); snd('ok'); } } else if (!selOk[0]) { sel[0] = i; selOk[0] = true; snd('ok'); } else if (mode === 'versus' && !selOk[1]) { sel[1] = i; selOk[1] = true; snd('ok'); } });
       }
       c.fillStyle = 'rgba(255,255,255,.75)'; c.font = '600 11px system-ui'; c.textAlign = 'center'; c.fillText('Move: \u2190 \u2192 · Confirm: any attack button / Enter · Back: HK / Esc', W / 2, H - 22);
       if (mode === 'versus') { c.fillText(selOk[0] ? (selOk[1] ? 'Ready!' : 'P2: choose your fighter') : 'P1: choose your fighter', W / 2, H - 8); }
+      if (mode === 'online') { c.fillText(selOk[me] ? (selOk[opp] ? 'Starting…' : 'Waiting for your friend to choose…') : 'Choose your fighter', W / 2, H - 8); }
     }
     function drawMoves(c, t) {
       bgMenu(c, t); c.fillStyle = 'rgba(8,4,20,.86)'; c.fillRect(20, 16, W - 40, H - 28); c.strokeStyle = '#ffd23a'; c.lineWidth = 2; c.strokeRect(20, 16, W - 40, H - 28);
@@ -1994,7 +2007,8 @@ const playFight = (() => {
         drawFighter(c, a, V.tick); bigText(c, 'FINAL BLAST!', W / 2, 90, 44 * (0.8 + u * 0.25), ['#ffffff', palOf(a).gi2], 1, -0.05);
       }
       if (V.flash > 0) { c.fillStyle = 'rgba(255,255,255,' + V.flash * 0.7 + ')'; c.fillRect(0, 0, W, H); }
-      drawHud(c, S, V, [null, S.ai[1] && !S.train && mode === 'arcade' ? 'CPU' : (S.train ? 'DUMMY' : null)]);
+      const nm = x => String(x || 'FRIEND').toUpperCase().slice(0, 10), myn = nm(getUserProfile().name), opn = nm(G && G.opp);
+      drawHud(c, S, V, mode === 'online' ? (me === 0 ? [myn, opn] : [opn, myn]) : [null, S.ai[1] && !S.train && mode === 'arcade' ? 'CPU' : (S.train ? 'DUMMY' : null)]);
       if (mode === 'arcade') { c.font = '900 11px ' + FONT; c.textAlign = 'center'; c.fillStyle = '#ffd23a'; c.fillText('STAGE ' + arc.stage + ' · SCORE ' + arc.score, W / 2, 62); }
       drawAnn(c, S, V);
       if (S.train) drawTrain(c);
@@ -2006,7 +2020,7 @@ const playFight = (() => {
       runs.forEach((r, k) => { const names = [[KB.LP, 'LP'], [KB.HP, 'HP'], [KB.LK, 'LK'], [KB.HK, 'HK']].filter(x => r.b & x[0]).map(x => x[1]).join('+'); const y = H - 40 - k * 13; c.fillStyle = 'rgba(0,0,0,.5)'; c.fillRect(14, y - 10, 104, 13); c.fillStyle = '#fff'; c.fillText((DIRG[r.d] || '') + ' ' + names, 18, y); c.fillStyle = '#9aa6d8'; c.fillText(r.n + 'f', 96, y); });
       c.textAlign = 'center'; c.fillStyle = '#ffffff'; c.font = '700 11px system-ui'; c.fillText('Dummy: ' + S.dummy.toUpperCase() + ' (change it in the pause menu)', W / 2, H - 6);
     }
-    function pauseItems() { const a = ['RESUME']; if (S && S.train) { a.push('DUMMY: ' + S.dummy.toUpperCase(), 'RESET POSITIONS'); } a.push('MOVE LIST', 'SOUND: ' + (gameSoundOn() ? 'ON' : 'OFF')); if (document.fullscreenEnabled && !document.fullscreenElement) a.push('FULLSCREEN'); a.push('QUIT'); return a; }
+    function pauseItems() { if (onl) return ['RESUME', 'SOUND: ' + (gameSoundOn() ? 'ON' : 'OFF'), 'QUIT MATCH']; const a = ['RESUME']; if (S && S.train) { a.push('DUMMY: ' + S.dummy.toUpperCase(), 'RESET POSITIONS'); } a.push('MOVE LIST', 'SOUND: ' + (gameSoundOn() ? 'ON' : 'OFF')); if (document.fullscreenEnabled && !document.fullscreenElement) a.push('FULLSCREEN'); a.push('QUIT'); return a; }
     function pauseDo(label) {
       if (label === 'RESUME') { setPause(false); }
       else if (label.indexOf('DUMMY') === 0) { const L = ['stand', 'crouch', 'block', 'cblock', 'jump', 'cpu']; S.dummy = L[(L.indexOf(S.dummy) + 1) % L.length]; if (S.dummy === 'cpu' && !S.ai[1]) S.ai[1] = { lvl: 2, q: [], cd: 0, hold: 0 }; snd('menu'); }
@@ -2014,6 +2028,7 @@ const playFight = (() => {
       else if (label === 'MOVE LIST') { sc = 'moves2'; }
       else if (label.indexOf('SOUND') === 0) { lss('game_sound', gameSoundOn() ? '0' : '1'); snd('menu'); }
       else if (label === 'FULLSCREEN') { try { ov.requestFullscreen(); } catch (e) {} }
+      else if (label === 'QUIT MATCH') { send({ op: 'fquit' }); close(); }
       else if (label === 'QUIT') { if (mode === 'arcade') endRun(); sc = 'menu'; paused = false; S = null; ctlShow(); snd('back'); }
     }
     function drawPause(c) {
@@ -2040,8 +2055,17 @@ const playFight = (() => {
         const a = mockF(o.c0, 150 + (1 - e) * -200, 1, false), b = mockF(o.c1, 490 + (1 - e) * 200, -1, o.c0 === o.c1); [a, b].forEach(f => portrait(c, f, gt, 262, 1.3));
         bigText(c, 'VS', W / 2, 170, 70, ['#ff9a5e', '#ff2e4e'], e); bigText(c, CH[o.c0].n, 150, 280, 24, '#fff', 1); bigText(c, CH[o.c1].n, 490, 280, 24, '#fff', 1);
         bigText(c, STAGES[o.stage] + ' · ' + ['EASY', 'NORMAL', 'HARD', 'VERY HARD', 'MAX'][clamp(o.ai1, 0, 4)], W / 2, 320, 14, '#ffd23a', 1); addHot(0, 0, W, H, () => { vsCard = 999; });
+      } else if (sc === 'gone') {
+        bgMenu(c, gt); bigText(c, 'YOUR FRIEND LEFT', W / 2, 140, 38, ['#ffffff', '#ffd23a'], 1); c.fillStyle = '#fff'; c.font = '700 13px system-ui'; c.textAlign = 'center'; c.fillText('Tap or press a button to go back', W / 2, 200); addHot(0, 0, W, H, () => { close(); });
       } else if (sc === 'fight') {
-        drawFight(c); if (toastT > 0) { toastT--; bigText(c, toastS, W / 2, 330, 14, '#fff', Math.min(1, toastT / 30)); }
+        if (onl && !isHost) {
+          const a = clamp((performance.now() - net.rt) / 34, 0, 1);
+          S.f.forEach(f => { f._x = f.x; f._y = f.y; if (f.ox != null) { f.x = lerp(f.ox, f.x, a); f.y = lerp(f.oy, f.y, a); } });
+          S.pr.forEach(p => { p._x = p.x; p.x = lerp(p.ox, p.x, a); });
+          drawFight(c);
+          S.f.forEach(f => { f.x = f._x; f.y = f._y; }); S.pr.forEach(p => { p.x = p._x; });
+        } else drawFight(c);
+        if (onl && performance.now() - net.lastIn > 3500) bigText(c, 'CONNECTION UNSTABLE…', W / 2, 250, 16, ['#ffb0b0', '#ff4a4a'], 1); if (toastT > 0) { toastT--; bigText(c, toastS, W / 2, 330, 14, '#fff', Math.min(1, toastT / 30)); }
         if (paused) drawPause(c);
       } else if (sc === 'cont') {
         bgMenu(c, gt); bigText(c, 'CONTINUE?', W / 2, 90, 52, ['#ffffff', '#ff7a45'], 1); bigText(c, String(cont.n), W / 2, 180, 110, ['#fff7a8', '#ff7a2e'], 1);
@@ -2051,9 +2075,9 @@ const playFight = (() => {
         const f = mockF(sel[0], 320, 1, false); f.st = 'win'; portrait(c, f, gt, 282, 1.25);
         c.fillStyle = '#fff'; c.font = '700 13px system-ui'; c.textAlign = 'center'; c.fillText('Your score was saved to the Games leaderboard · press a button / tap', W / 2, H - 14); addHot(0, 0, W, H, () => { sc = 'menu'; arc = null; });
       } else if (sc === 'result') {
-        bgMenu(c, gt); const w = resData.w; bigText(c, 'PLAYER ' + (w + 1) + ' WINS!', W / 2, 70, 44, ['#ffffff', '#ffd23a'], 1);
+        bgMenu(c, gt); const w = resData.w; bigText(c, mode === 'online' ? (w === me ? 'YOU WIN!' : 'YOU LOSE') : 'PLAYER ' + (w + 1) + ' WINS!', W / 2, 70, 44, ['#ffffff', '#ffd23a'], 1);
         const f = mockF(S.f[w].ci, 320, 1, S.f[w].alt); f.st = 'win'; portrait(c, f, gt, 250, 1.2);
-        menuList(c, ['REMATCH', 'CHARACTER SELECT', 'MENU'], resI, 290, 22, i => { resI = i; resPick(i); });
+        menuList(c, [net.rmMe ? 'WAITING FOR FRIEND…' : 'REMATCH', 'CHARACTER SELECT', mode === 'online' ? 'QUIT' : 'MENU'], resI, 290, 22, i => { resI = i; resPick(i); });
       }
       if (S === null && sc !== 'fight') { /* nothing */ }
     }
@@ -2068,6 +2092,12 @@ const playFight = (() => {
     }
     function resPick(i) {
       snd('ok');
+      if (mode === 'online') {
+        if (i === 0) { net.rmMe = true; send({ op: 'frm' }); maybeRematch(); }
+        else if (i === 1) { send({ op: 'fsr' }); sc = 'sel'; selOk = [false, false]; net.rmMe = net.rmOpp = false; sendSel(); }
+        else { send({ op: 'fquit' }); close(); }
+        return;
+      }
       if (i === 0) startMatch(Object.assign({}, lastCfg));
       else if (i === 1) { sc = 'sel'; selOk = [false, false]; S = null; } else { sc = 'menu'; S = null; }
     }
@@ -2077,6 +2107,37 @@ const playFight = (() => {
       if (mode === 'arcade') startArcade();
       else if (mode === 'versus') startMatch({ c0: sel[0], c1: sel[1], rounds: 2, stage: Math.floor(Math.random() * 3) });
       else startMatch({ c0: sel[0], c1: (sel[0] + 1) % 3, ai1: 2, train: true, rounds: 99, stage: Math.floor(Math.random() * 3) });
+    }
+
+    // ---------- Watch Party online (host simulates, guest sends inputs and draws snapshots) ----------
+    const sendSel = () => send({ op: 'fsel', i: me, c: sel[me], ok: selOk[me] });
+    function startOnline(cfg) {
+      const cc = v => clamp(v | 0, 0, 2); const c = { c0: cc(cfg.c0), c1: cc(cfg.c1), rounds: 2, stage: cc(cfg.stage) };
+      lastCfg = c; S = newMatch(c); S.stage = c.stage; V = newView(); V.tick = 0; sc = 'fight'; paused = false; tmask.dir = 0; tmask.btn = 0; tmask.lat = 0;
+      net.q = []; net.inj = null; net.last = 0; net.evb = []; net.n = 0; net.rmMe = net.rmOpp = false; net.lastIn = performance.now(); net.rt = performance.now(); ctlShow(); snd('ok');
+    }
+    function maybeRematch() {
+      if (!(isHost && net.rmMe && net.rmOpp && lastCfg)) return;
+      const cfg = { c0: lastCfg.c0, c1: lastCfg.c1, rounds: 2, stage: Math.floor(Math.random() * 3) }; send({ op: 'fgo', cfg }); startOnline(cfg);
+    }
+    function applySnap(sn) {
+      if (!S || sc !== 'fight' || !sn || !sn.f) return;
+      const old = S.f.map(f => [f.x, f.y]);
+      S.phase = sn.ph; S.pt = sn.pt; S.rnd = sn.rn; S.wins = sn.w; S.timer = sn.tm; S.slow = sn.sl; S.freeze = sn.fr; S.sf = sn.sf; S.hitstop = sn.hs; S.ko = sn.ko; S.timeout = !!sn.to; S.maxc = sn.mc;
+      sn.f.forEach((a, i) => { const f = S.f[i]; FK.forEach((k, j) => { f[k] = a[j]; }); f.ox = old[i][0]; f.oy = old[i][1]; });
+      S.pr = (sn.pr || []).map(a => ({ o: a[0], x: a[1], y: a[2], vx: a[3], w: a[4], h: a[5], kind: a[6], t: a[7], ox: a[1] - a[3] * 2 }));
+      S.ev = sn.ev || []; evFx(S, V, snd, rumble); net.rt = performance.now();
+      if (sn.dn >= 0) { S.done = { w: sn.dn }; resData = { w: sn.dn }; sc = 'result'; resI = 0; net.rmMe = net.rmOpp = false; snd('win'); }
+    }
+    function onNet(m) {
+      net.lastIn = performance.now();
+      if (m.op === 'fsel') { if (m.i === opp) { sel[opp] = clamp(m.c | 0, 0, 2); selOk[opp] = !!m.ok; } }
+      else if (m.op === 'fgo') { if (!isHost && m.cfg) startOnline(m.cfg); }
+      else if (m.op === 'fin') { if (isHost && sc === 'fight') { net.q.push(m.m | 0); if (net.q.length > 12) net.q.splice(0, net.q.length - 8); if (typeof m.j === 'string' && MV[m.j]) net.inj = m.j; } }
+      else if (m.op === 'fst') { if (!isHost) applySnap(m.s); }
+      else if (m.op === 'frm') { net.rmOpp = true; maybeRematch(); }
+      else if (m.op === 'fsr') { sc = 'sel'; selOk = [false, false]; net.rmMe = net.rmOpp = false; sendSel(); }
+      else if (m.op === 'fquit') { sc = 'gone'; paused = false; ctlShow(); }
     }
 
     // ---------- fixed-step update ----------
@@ -2089,19 +2150,30 @@ const playFight = (() => {
         if (nav.u) { optI = (optI + OPTS.length - 1) % OPTS.length; snd('menu'); } if (nav.d) { optI = (optI + 1) % OPTS.length; snd('menu'); }
         if (nav.l) optChange(optI, -1); if (nav.r || nav.ok) optChange(optI, 1); if (nav.back) { sc = 'menu'; snd('back'); }
       } else if (sc === 'sel') {
-        for (let p = 0; p < (mode === 'versus' ? 2 : 1); p++) {
-          const e = edge[p]; if (selOk[p]) { if (e & KB.HK) { selOk[p] = false; snd('back'); } continue; }
-          if (e & KB.L) { sel[p] = (sel[p] + 2) % 3; snd('menu'); } if (e & KB.R) { sel[p] = (sel[p] + 1) % 3; snd('menu'); }
-          if ((e & (KB.LP | KB.HP | KB.LK)) || (p === 0 && (latch.ok || nav.ok))) { selOk[p] = true; snd('ok'); }
+        const sl = mode === 'versus' ? [0, 1] : mode === 'online' ? [me] : [0];
+        sl.forEach(p => {
+          const e = edge[mode === 'online' ? 0 : p], was0 = sel[p], was1 = selOk[p];
+          if (selOk[p]) { if (e & KB.HK) { selOk[p] = false; snd('back'); } }
+          else {
+            if (e & KB.L) { sel[p] = (sel[p] + 2) % 3; snd('menu'); } if (e & KB.R) { sel[p] = (sel[p] + 1) % 3; snd('menu'); }
+            if ((e & (KB.LP | KB.HP | KB.LK)) || ((p === 0 || mode === 'online') && nav.ok)) { selOk[p] = true; snd('ok'); }
+          }
+          if (mode === 'online' && (was0 !== sel[p] || was1 !== selOk[p])) sendSel();
+        });
+        if (mode === 'online') {
+          if (nav.back && !selOk[me]) { send({ op: 'fquit' }); close(); return; }
+          if (isHost && selOk[0] && selOk[1]) { const cfg = { c0: sel[0], c1: sel[1], rounds: 2, stage: Math.floor(Math.random() * 3) }; send({ op: 'fgo', cfg }); startOnline(cfg); }
+        } else {
+          if (nav.back && !selOk[0] && !selOk[1]) { sc = 'menu'; snd('back'); }
+          if (selOk[0] && (mode !== 'versus' || selOk[1])) { selDone(); }
         }
-        if (nav.back && !selOk[0] && !selOk[1]) { sc = 'menu'; snd('back'); }
-        if (selOk[0] && (mode !== 'versus' || selOk[1])) { selDone(); }
       } else if (sc === 'moves' || sc === 'moves2') {
         if (nav.back || nav.ok) { if (sc === 'moves2') sc = 'fight'; else sc = 'menu'; snd('back'); }
       } else if (sc === 'vs') {
         vsCard++; if (vsCard === 1) snd('ding'); if (vsCard > 130 || nav.ok) startMatch(lastCfg);
       } else if (sc === 'cont') {
         cont.t++; if (cont.t % 60 === 0) { cont.n--; snd('menu'); if (cont.n < 0) { endRun(); sc = 'menu'; arc = null; } } if (nav.ok) contYes();
+      } else if (sc === 'gone') { if (nav.ok || nav.back) close();
       } else if (sc === 'clear') { if (nav.ok || nav.back) { sc = 'menu'; arc = null; snd('ok'); }
       } else if (sc === 'result') {
         if (nav.u) resI = (resI + 2) % 3; if (nav.d) resI = (resI + 1) % 3; if (nav.ok) resPick(resI); if (nav.back) resPick(2);
@@ -2109,14 +2181,24 @@ const playFight = (() => {
         if (nav.start || nav.back) { setPause(!paused); }
         if (paused) {
           const it = pauseItems(); if (nav.u) { pauseI = (pauseI + it.length - 1) % it.length; snd('menu'); } if (nav.d) { pauseI = (pauseI + 1) % it.length; snd('menu'); } if (nav.ok) pauseDo(it[pauseI]);
-          return;
+          if (!onl) return;
+          if (sc !== 'fight' || closed) return;
         }
         if (!S) return;
-        if (tinj.c) { S.f[0].inj = tinj.c; tinj.c = null; }
-        const m0 = rawM[0] ; let m1;
-        if (mode === 'versus') m1 = rawM[1]; else m1 = aiMask(S, 1);
-        step(S, m0, m1); V.tick++;
+        const my = paused ? 0 : rawM[0];
+        if (onl && !isHost) {
+          send({ op: 'fin', m: my, j: tinj.c || 0 }); tinj.c = null; V.tick++;
+          if (V.shake > 0) V.shake *= 0.82; if (V.flash > 0) V.flash = Math.max(0, V.flash - 0.07);
+          if (performance.now() - net.lastIn > 25000) sc = 'gone';
+          return;
+        }
+        if (tinj.c) { if (!paused) S.f[0].inj = tinj.c; tinj.c = null; }
+        let m1;
+        if (onl) { if (net.q.length > 4) net.last = net.q.shift(); if (net.q.length) net.last = net.q.shift(); m1 = net.last | 0; if (net.inj) { S.f[1].inj = net.inj; net.inj = null; } if (performance.now() - net.lastIn > 25000) { sc = 'gone'; return; } }
+        else if (mode === 'versus') m1 = rawM[1]; else m1 = aiMask(S, 1);
+        step(S, my, m1); V.tick++;
         evFx(S, V, snd, rumble);
+        if (onl) { for (let i = 0; i < S.ev.length; i++) net.evb.push(S.ev[i]); if ((net.n++ & 1) === 0 || S.done) { send({ op: 'fst', s: snapOf(S, net.evb) }); net.evb = []; } }
         if (V.shake > 0) V.shake *= 0.82; if (V.flash > 0) V.flash = Math.max(0, V.flash - 0.07);
         if (S.slow > 0) S.slow--;
         if (S.done) { const sd = S; matchDone(); if (sc === 'fight') S = sd; }
@@ -2126,13 +2208,15 @@ const playFight = (() => {
     function frame(now) {
       if (closed) return; raf = requestAnimationFrame(frame);
       const dt = Math.min(100, now - last); last = now; pollInputs();
-      const rate = (sc === 'fight' && S && S.slow > 0 && !paused) ? 0.4 : 1; acc += dt * rate;
+      const rate = (sc === 'fight' && S && S.slow > 0 && (!paused || onl) && isHost) ? 0.4 : 1; acc += dt * rate;
       let n = 0; while (acc >= 16.667 && n < 6) { acc -= 16.667; simStep(); n++; if (closed) return; nav.u = nav.d = nav.l = nav.r = nav.ok = nav.back = nav.start = 0; edge[0] = edge[1] = 0; }
       if (n === 6) acc = 0;
-      if (n > 0) tmask.lat = 0;
+      if (n > 0) { tmask.lat = 0; for (const k in klat) delete klat[k]; }
       if (sc === 'fight' && !paused) ctlShow();
       draw();
     }
+    CUR = { close };
+    if (onl) { mode = 'online'; sc = 'sel'; selOk = [false, false]; sel[me] = clamp(+lsg('fight_char', 0), 0, 2); sel[opp] = (sel[me] + 1) % 3; G.onmsg = onNet; sendSel(); }
     layout(); ctlShow(); raf = requestAnimationFrame(frame);
     cv.focus();
   };
@@ -4843,7 +4927,7 @@ document.addEventListener('click', e => {
   const a = e.target.closest('.epc'); if (a && !e.target.closest('button')) a.classList.toggle('rev');
 });
 const PATCHNOTES = [
-  { v: '68', c: ['New game: Fighter, an arcade fighting game (Games tab, 🥊). Three fighters (Kaito, Mira, Gorn), best of 3 rounds, health and timer, and a super meter. Real command inputs: Spark Ball (↓ ↘ → + punch), Rising Fist (→ ↓ ↘ + punch), Whirl Kick (↓ ↙ ← + kick), Final Blast (↓ ↘ → ↓ ↘ → + punch, full meter), throw (LP + LK), dashes (→ → / ← ←). Combos: light attacks chain into each other and cancel into specials; lows, overheads, blocking by holding back, counter hits and combo damage scaling. Modes: Arcade (5 CPU stages, continue screen, score saved to the Games leaderboard), Versus (2 players on one device with two gamepads, or a gamepad + the keyboard, or a shared keyboard), Training (input display, dummy settings) and a Move List. Controls: keyboard, gamepad (with rumble), or touch with a floating stick, 4 buttons, a throw button and optional shortcut buttons for the specials. On a phone held upright it turns the picture sideways, so turn the phone. Playing against a friend in a Watch Party is not in this version yet.'] },
+  { v: '68', c: ['New game: Fighter, an arcade fighting game (Games tab, 🥊). Three fighters (Kaito, Mira, Gorn), best of 3 rounds, health and timer, and a super meter. Real command inputs: Spark Ball (↓ ↘ → + punch), Rising Fist (→ ↓ ↘ + punch), Whirl Kick (↓ ↙ ← + kick), Final Blast (↓ ↘ → ↓ ↘ → + punch, full meter), throw (LP + LK), dashes (→ → / ← ←). Combos: light attacks chain into each other and cancel into specials; lows, overheads, blocking by holding back, counter hits and combo damage scaling. Modes: Arcade (5 CPU stages, continue screen, score saved to the Games leaderboard), Versus (2 players on one device with two gamepads, or a gamepad + the keyboard, or a shared keyboard), Training (input display, dummy settings) and a Move List. Controls: keyboard, gamepad (with rumble), or touch with a floating stick, 4 buttons, a throw button and optional shortcut buttons for the specials. On a phone held upright it turns the picture sideways, so turn the phone. Watch Party: challenge a friend with 👥 vs friend (both pick a fighter, the host runs the match, rematch and quit buttons, and the invite pop-up works like Pong). The guest sees the fight a fraction of a second late.'] },
   { v: '67', c: ['New loading screen: the logo, a progress bar and a cinema quote show while the app starts (also in the home-screen app) and fade out once Home is ready.'] },
   { v: '66', c: ['Games: chat with your party while you play (panel under the game), and game invitations now always arrive: before, you could miss an invite after finishing a game. New setting “Poster colors theme”: on a movie or series page the app takes its colors from the poster (back to your normal theme when you leave the page).'] },
   { v: '65', c: ['Watch Party: changing the player source (Vidy / Multiembed / Vidsrc) now really switches it for everyone, and guests can ask the host to change it. “Sync Time” no longer sends everyone to 0:00 when the player has not reported a time yet, and tells you when the source cannot jump to a time (only Vidy can). New 🎉 Party button in the navigation bar while you are in a party, from anywhere: shows the party, goes back to the movie, or leaves it.'] },
