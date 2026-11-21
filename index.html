@@ -309,7 +309,7 @@ body.theater #next{position:fixed;left:50%;transform:translateX(-50%);bottom:cal
 <p class="attr">This product uses the TMDB API but is not endorsed or certified by TMDB. <span id="contact"></span></p>
 
 <script>
-const APP_VERSION = '68';
+const APP_VERSION = '69';
 const IMG = 'https://image.tmdb.org/t/p/';
 const app = document.getElementById('app');
 const q = document.getElementById('q');
@@ -907,14 +907,14 @@ const playFight = (() => {
     jhp: { air: 1, s: 6, a: 10, dmg: 60, hs: 20, bs: 12, kb: 5, lvl: 'm', box: [8, 58, 38, 84], hst: 8 },
     jlk: { air: 1, s: 4, a: 12, dmg: 40, hs: 16, bs: 10, kb: 3, lvl: 'm', box: [6, 56, 8, 40], hst: 5 },
     jhk: { air: 1, s: 7, a: 12, dmg: 64, hs: 20, bs: 12, kb: 6, lvl: 'm', box: [8, 68, 22, 58], hst: 9 },
-    fire_l: { sp: 1, s: 11, tot: 42, proj: { f: 11, ox: 36, oy: 76, vx: 4.2, dmg: 56, hs: 20, bs: 11, kb: 5, hst: 8 } },
-    fire_h: { sp: 1, s: 11, tot: 46, proj: { f: 11, ox: 36, oy: 76, vx: 7.4, dmg: 72, hs: 22, bs: 12, kb: 6, hst: 9 } },
+    fire_l: { sp: 1, s: 9, tot: 38, proj: { f: 9, ox: 36, oy: 76, vx: 4.2, dmg: 56, hs: 20, bs: 11, kb: 5, hst: 8 } },
+    fire_h: { sp: 1, s: 9, tot: 40, proj: { f: 9, ox: 36, oy: 76, vx: 7.4, dmg: 72, hs: 22, bs: 12, kb: 6, hst: 9 } },
     dp_l: { sp: 1, s: 3, inv: [0, 9], jmp: { f: 3, vx: 2.2, vy: 10.5 }, land: 22, hits: [{ f: [3, 9], box: [6, 52, 8, 134], dmg: 88, hs: 30, bs: 16, kb: 4, lvl: 'm', kd: 1, hst: 10 }] },
     dp_h: { sp: 1, s: 4, inv: [0, 13], jmp: { f: 4, vx: 2.8, vy: 12.2 }, land: 26, hits: [{ f: [4, 8], box: [6, 52, 8, 134], dmg: 52, hs: 26, bs: 14, kb: 2, lvl: 'm', hst: 7 }, { f: [9, 15], box: [2, 48, 40, 156], dmg: 70, hs: 30, bs: 16, kb: 5, lvl: 'm', kd: 1, hst: 11 }] },
     whirl_l: { sp: 1, s: 5, tot: 38, mx: [[4, 32, 2.4]], hits: [6, 13, 20].map((a, i) => ({ f: [a, a + 3], box: [-38, 46, 18, 94], dmg: 26, hs: 22, bs: 12, kb: 2, lvl: 'm', kd: i === 2 ? 1 : 0, hst: 4 })) },
     whirl_h: { sp: 1, s: 5, tot: 46, mx: [[4, 40, 3.4]], hits: [6, 12, 18, 24].map((a, i) => ({ f: [a, a + 3], box: [-40, 52, 18, 94], dmg: 27, hs: 22, bs: 12, kb: 2, lvl: 'm', kd: i === 3 ? 1 : 0, hst: 4 })) },
     super: { sp: 1, s: 16, tot: 74, inv: [0, 22], proj: { f: 16, ox: 40, oy: 72, vx: 11, w: 150, h: 76, dmg: 250, hs: 40, bs: 22, kb: 10, kd: 1, kind: 'beam', life: 44, hst: 14 } },
-    throw: { s: 5, tot: 34, range: 56, dmg: 105 }
+    throw: { s: 5, tot: 34, range: 80, dmg: 105 }
   };
   Object.keys(MV).forEach(k => {
     const m = MV[k]; m.k = k;
@@ -1018,7 +1018,7 @@ const playFight = (() => {
     chk: [[0, P.chk0], [8, P.chk1], [12, P.chk1], [32, P.crouch]],
     jlp: [[0, P.jump], [3, P.jlp1], [12, P.jlp1], [14, P.jump]], jhp: [[0, P.jump], [6, P.jhp1], [15, P.jhp1], [17, P.jump]],
     jlk: [[0, P.jump], [4, P.jlk1], [15, P.jlk1], [17, P.jump]], jhk: [[0, P.jump], [7, P.jhk1], [18, P.jhk1], [20, P.jump]],
-    fire_l: [[0, P.fire0], [11, P.fire1], [30, P.fire1], [42, P.stand]], fire_h: [[0, P.fire0], [11, P.fire1], [32, P.fire1], [46, P.stand]],
+    fire_l: [[0, P.fire0], [9, P.fire1], [26, P.fire1], [38, P.stand]], fire_h: [[0, P.fire0], [9, P.fire1], [28, P.fire1], [40, P.stand]],
     dp_l: [[0, P.dp0], [3, P.dp1], [12, P.dp1], [20, P.dp2]], dp_h: [[0, P.dp0], [4, P.dp1], [16, P.dp1], [26, P.dp2]],
     whirl_l: [[0, P.crouch], [5, P.wh]], whirl_h: [[0, P.crouch], [5, P.wh]],
     super: [[0, P.sup0], [16, P.sup0], [20, P.sup1], [60, P.sup1], [74, P.stand]],
@@ -1068,7 +1068,7 @@ const playFight = (() => {
     if (NEUT.indexOf(f.st) >= 0) return true;
     if (f.st === 'atk') {
       const cur = MV[f.mv];
-      if (c === 'throw') return f.mt <= 3 && !f.cx && (f.mv === 'lp' || f.mv === 'lk' || f.mv === 'clp' || f.mv === 'clk');
+      if (c === 'throw') return (f.mt <= 3 && !f.cx && (f.mv === 'lp' || f.mv === 'lk' || f.mv === 'clp' || f.mv === 'clk')) || (f.cx && f.blk && !!cur.ch);
       if (!f.cx) return false;
       if (mv.sp) return !!cur.sc || (c === 'super' && !!cur.sp);
       return !!cur.ch && !cur.sp && f.used.indexOf(c) < 0;
@@ -1079,7 +1079,7 @@ const playFight = (() => {
     const wasAir = f.y > 0;
     if (!wasAir && NEUT.indexOf(f.st) >= 0) { const s = sgn(o.x - f.x); if (s) f.fc = s; }
     if (NEUT.indexOf(f.st) >= 0) f.used = [];
-    f.st = 'atk'; f.mv = c; f.mt = -1; f.cx = false; f.hd = []; f.used.push(c); f.buf = null;
+    f.st = 'atk'; f.mv = c; f.mt = -1; f.cx = false; f.blk = false; f.hd = []; f.used.push(c); f.buf = null;
     if (wasAir) f.airUsed = true; else f.vx = 0;
     if (c === 'super') { f.meter = 0; S.freeze = 42; S.ev.push({ t: 'super', i: f.i }); }
   }
@@ -1202,12 +1202,12 @@ const playFight = (() => {
     const canBlk = grounded && (D.st === 'idle' || D.st === 'walk' || D.st === 'crouch' || D.st === 'block');
     let blocked = false;
     if (canBlk && D.ix < 0) { const low = D.iy < 0; blocked = !(w.lvl === 'l' && !low) && !(w.lvl === 'o' && low); }
-    const hs0 = w.hst || 7, cx = pj ? pj.x : (A.x + D.x) / 2, cy = pj ? pj.y : A.y + (w.box ? (w.box[2] + w.box[3]) / 2 : 70);
+    const hs0 = Math.max(3, Math.round((w.hst || 7) * 0.75)), cx = pj ? pj.x : (A.x + D.x) / 2, cy = pj ? pj.y : A.y + (w.box ? (w.box[2] + w.box[3]) / 2 : 70);
     const dd = sgn(A.x - D.x); if (dd) D.fc = dd;
     if (blocked) {
       D.st = 'block'; D.stun = w.bs; D.cb = D.iy < 0; D.mv = null; D.buf = null; D.vx = 0; D.kx = dirp * w.kb * 1.2;
       if (isSp) D.hp = Math.max(0, D.hp - Math.round(w.dmg * DM * A.ch.dm * 0.1));
-      if (!pj) { A.cx = true; if ((D.x <= WL + 3 && dirp < 0) || (D.x >= WR - 3 && dirp > 0)) A.kx = -dirp * w.kb * 1.1; }
+      if (!pj) { A.cx = true; A.blk = true; if ((D.x <= WL + 3 && dirp < 0) || (D.x >= WR - 3 && dirp > 0)) A.kx = -dirp * w.kb * 1.1; }
       S.hitstop = Math.max(S.hitstop, Math.max(4, hs0 - 2));
       A.meter = Math.min(100, A.meter + w.dmg * 0.05); D.meter = Math.min(100, D.meter + w.dmg * 0.04);
       S.ev.push({ t: 'block', x: cx + dirp * 6, y: cy, i: A.i });
@@ -1699,7 +1699,8 @@ const playFight = (() => {
     '.ftb{position:absolute;border-radius:50%;background:rgba(255,255,255,.13);border:2px solid rgba(255,255,255,.38);color:#fff;font:900 15px Impact,"Arial Black",sans-serif;display:flex;align-items:center;justify-content:center;pointer-events:auto;touch-action:none;text-shadow:0 1px 3px #000;transition:background .05s}' +
     '.ftb.on{background:rgba(255,122,69,.6);border-color:#ffd34d}.ftb.sm{font-size:19px;background:rgba(80,160,255,.15);border-color:rgba(140,200,255,.5)}' +
     '#ftzone{position:absolute;left:0;bottom:0;width:46%;height:80%;pointer-events:auto;touch-action:none}' +
-    '#ftbase{position:absolute;width:124px;height:124px;border-radius:50%;background:rgba(255,255,255,.09);border:2px solid rgba(255,255,255,.28);opacity:.75}' +
+    '#ftbase{position:absolute;width:124px;height:124px;border-radius:50%;background:rgba(255,255,255,.09);border:2px solid rgba(255,255,255,.28);opacity:.75;pointer-events:none}' +
+    '#ftdpad{position:absolute;left:22px;bottom:22px;width:156px;height:156px;pointer-events:auto;touch-action:none;display:none}#ftdpad i{position:absolute;width:52px;height:52px;background:rgba(255,255,255,.13);border:2px solid rgba(255,255,255,.38);display:flex;align-items:center;justify-content:center;color:#fff;font:700 20px system-ui;font-style:normal;pointer-events:none}#ftdpad i.on{background:rgba(255,122,69,.6);border-color:#ffd34d}#ftdpad [data-d=u]{left:52px;top:0;border-radius:12px 12px 4px 4px}#ftdpad [data-d=d]{left:52px;bottom:0;border-radius:4px 4px 12px 12px}#ftdpad [data-d=l]{left:0;top:52px;border-radius:12px 4px 4px 12px}#ftdpad [data-d=r]{right:0;top:52px;border-radius:4px 12px 12px 4px}#ftdpad b{position:absolute;left:52px;top:52px;width:52px;height:52px;background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.2);box-sizing:border-box;pointer-events:none}' +
     '#ftthumb{position:absolute;width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.35);border:2px solid rgba(255,255,255,.6);left:35px;top:35px}' +
     '#ftpause{position:absolute;top:8px;right:10px;width:42px;height:42px;font-size:18px}' +
     '#ftrot{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:#fff;font:700 15px system-ui;text-align:center;background:rgba(0,0,0,.65);padding:8px 14px;border-radius:10px;pointer-events:none;opacity:0;transition:opacity .6s}';
@@ -1716,20 +1717,27 @@ const playFight = (() => {
     if (document.getElementById('ftov')) return;
     const onl = online === true && typeof G !== 'undefined' && !!G && !!G.sid;
     const me = onl ? (G.role === 'a' ? 0 : 1) : 0, opp = 1 - me, isHost = !onl || G.role === 'a';
+    const nm0 = x => String(x || 'FRIEND').toUpperCase().slice(0, 10), names = { me: 'YOU', op: 'FRIEND' };
+    if (onl) { try { names.me = nm0(getUserProfile().name); } catch (e) {} names.op = nm0(G.opp); }
     const net = { q: [], last: 0, inj: null, lastIn: performance.now(), rmMe: false, rmOpp: false, evb: [], n: 0, rt: 0 };
     const send = o => { if (onl) { try { sendGame(Object.assign({ sid: G.sid }, o)); } catch (e) {} } };
     const gst = document.getElementById('gstage'); if (gst) gst.innerHTML = '<p class="meta" style="text-align:center">The Fighter is open full screen. Use Quit in its pause menu to come back.</p>';
     const lsg = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } };
     const lss = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
     const touchDev = (window.matchMedia && matchMedia('(pointer:coarse)').matches) || navigator.maxTouchPoints > 0;
-    const OPT = { diff: clamp(+lsg('fight_diff', 1), 0, 2), easy: lsg('fight_easy', '1') !== '0', flip: lsg('fight_flip', '0') === '1' };
+    const OPT = { diff: clamp(+lsg('fight_diff', 1), 0, 2), easy: lsg('fight_easy', '1') !== '0', flip: lsg('fight_flip', '0') === '1', pad: lsg('fight_pad', '1') !== '0' };
     // ---------- DOM ----------
     const ov = document.createElement('div'); ov.id = 'ftov';
-    ov.innerHTML = '<style>' + CSS + '</style><div id="ftw"><canvas id="gcv" tabindex="0"></canvas><div id="ftctl"><div id="ftzone"><div id="ftbase"><div id="ftthumb"></div></div></div></div><div id="ftrot">Turn your phone sideways</div></div>';
+    ov.innerHTML = '<style>' + CSS + '</style><div id="ftw"><canvas id="gcv" tabindex="0"></canvas><div id="ftctl"><div id="ftzone"></div><div id="ftbase"><div id="ftthumb"></div></div><div id="ftdpad"><b></b><i data-d="u">\u25B2</i><i data-d="d">\u25BC</i><i data-d="l">\u25C0</i><i data-d="r">\u25B6</i></div></div><div id="ftrot">Turn your phone sideways</div></div>';
     document.body.appendChild(ov);
     try { document.activeElement && document.activeElement.blur(); } catch (e) {}
     const prevOv = document.body.style.overflow; document.body.style.overflow = 'hidden';
-    const wrap = ov.querySelector('#ftw'), cv = ov.querySelector('#gcv'), cx = cv.getContext('2d'), ctl = ov.querySelector('#ftctl'), zone = ov.querySelector('#ftzone'), base = ov.querySelector('#ftbase'), thumb = ov.querySelector('#ftthumb');
+    const prevTA = document.documentElement.style.touchAction; document.documentElement.style.touchAction = 'none';
+    const noGest = e => { try { e.preventDefault(); } catch (x) {} }; ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, noGest, { passive: false }));
+    ov.addEventListener('touchmove', e => { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
+    let lastTouchEnd = 0; ov.addEventListener('touchend', e => { const n = Date.now(); if (n - lastTouchEnd < 320) e.preventDefault(); lastTouchEnd = n; }, { passive: false });
+    const wrap = ov.querySelector('#ftw'), cv = ov.querySelector('#gcv'), cx = cv.getContext('2d', { alpha: false }), ctl = ov.querySelector('#ftctl'), zone = ov.querySelector('#ftzone'), base = ov.querySelector('#ftbase'), thumb = ov.querySelector('#ftthumb'), dpad = ov.querySelector('#ftdpad');
+    let resScale = 1;
     let bs = 1, rot = 0, ww = 0, wh = 0, closed = false, kbUsed = false;
     const tmask = { dir: 0, btn: 0, lat: 0 }, tinj = { c: null };
     // ---------- buttons ----------
@@ -1753,7 +1761,7 @@ const playFight = (() => {
       wrap.style.width = ww + 'px'; wrap.style.height = wh + 'px';
       wrap.style.transform = rot === 1 ? 'translate(' + vw + 'px,0) rotate(90deg)' : rot === 2 ? 'translate(0,' + vh + 'px) rotate(-90deg)' : 'none';
       const s = Math.min(ww / W, wh / H); cv.style.width = Math.round(W * s) + 'px'; cv.style.height = Math.round(H * s) + 'px';
-      bs = clamp(s * Math.min(2, window.devicePixelRatio || 1), 1, 3); cv.width = Math.round(W * bs); cv.height = Math.round(H * bs);
+      bs = Math.max(0.6, clamp(s * Math.min(2, window.devicePixelRatio || 1), 1, 3) * resScale); cv.width = Math.round(W * bs); cv.height = Math.round(H * bs);
       const hint = ov.querySelector('#ftrot'); if (rot && !layout.shown) { layout.shown = 1; hint.style.opacity = '1'; setTimeout(() => { hint.style.opacity = '0'; }, 3500); }
     }
     const toW = (x, y) => rot === 1 ? [y, innerWidth - x] : rot === 2 ? [innerHeight - y, x] : [x, y];
@@ -1775,7 +1783,22 @@ const playFight = (() => {
     const stickEnd = ev => { if (ev.pointerId !== sid) return; sid = null; tmask.dir = 0; thumb.style.left = '35px'; thumb.style.top = '35px'; base.style.left = '24px'; base.style.top = 'auto'; base.style.bottom = '24px'; };
     zone.addEventListener('pointerup', stickEnd); zone.addEventListener('pointercancel', stickEnd);
     base.style.left = '24px'; base.style.bottom = '24px';
-    const ctlShow = () => { const on = touchDev && !kbUsed && sc === 'fight' && !paused; ctl.classList.toggle('on', on); sp.forEach(e => { e.style.display = OPT.easy ? 'flex' : 'none'; }); thr.style.display = 'flex'; };
+    let did = null; const arms = {}; dpad.querySelectorAll('i').forEach(e => { arms[e.dataset.d] = e; });
+    function dpadMove(ev) {
+      const p = toW(ev.clientX, ev.clientY), cxw = 22 + 78, cyw = wh - 22 - 78; let dx = p[0] - cxw, dy = p[1] - cyw; const len = Math.hypot(dx, dy); let m = 0;
+      if (len > 16) { const nx = dx / len, ny = dy / len; if (nx > 0.38) m |= KB.R; if (nx < -0.38) m |= KB.L; if (ny > 0.38) m |= KB.D; if (ny < -0.38) m |= KB.U; }
+      tmask.dir = m; arms.u.classList.toggle('on', !!(m & KB.U)); arms.d.classList.toggle('on', !!(m & KB.D)); arms.l.classList.toggle('on', !!(m & KB.L)); arms.r.classList.toggle('on', !!(m & KB.R));
+    }
+    dpad.addEventListener('pointerdown', ev => { if (did !== null) return; ev.preventDefault(); did = ev.pointerId; try { dpad.setPointerCapture(did); } catch (e) {} dpadMove(ev); });
+    dpad.addEventListener('pointermove', ev => { if (ev.pointerId === did) dpadMove(ev); });
+    const dpadEnd = ev => { if (ev.pointerId !== did) return; did = null; tmask.dir = 0; for (const k in arms) arms[k].classList.remove('on'); };
+    dpad.addEventListener('pointerup', dpadEnd); dpad.addEventListener('pointercancel', dpadEnd);
+    let ctlK = '';
+    const ctlShow = () => {
+      const on = touchDev && !kbUsed && sc === 'fight' && !paused, k = on + '|' + OPT.easy + '|' + OPT.pad; if (k === ctlK) return; ctlK = k;
+      ctl.classList.toggle('on', on); sp.forEach(e => { e.style.display = OPT.easy ? 'flex' : 'none'; }); thr.style.display = 'flex';
+      zone.style.display = OPT.pad ? 'none' : 'block'; base.style.display = OPT.pad ? 'none' : 'block'; dpad.style.display = OPT.pad ? 'block' : 'none'; if (!on) { tmask.dir = 0; }
+    };
 
     // ---------- keyboard / gamepad ----------
     const keys = {}, klat = {}, latch = {};
@@ -1867,12 +1890,13 @@ const playFight = (() => {
     let sc = 'menu', mode = null, menuI = 0, optI = 0, mvPage = 0, paused = false, pauseI = 0, S = null, V = null, gt = 0, hot = [];
     let sel = [0, 1], selOk = [false, false], selMode = null, arc = null, cont = { n: 9, t: 0 }, vsCard = 0, resI = 0, lastCfg = null, resData = null, aiLv = 1;
     sel[0] = clamp(+lsg('fight_char', 0), 0, 2);
-    const nav = { u: 0, d: 0, l: 0, r: 0, ok: 0, back: 0 }, pm = [0, 0], edge = [0, 0], rawM = [0, 0];
+    const nav = { u: 0, d: 0, l: 0, r: 0, ok: 0, back: 0, esc: 0 }, pm = [0, 0], edge = [0, 0], rawM = [0, 0];
     function pollInputs() {
       for (let i = 0; i < 2; i++) { const m = rawFor(i); rawM[i] = m; edge[i] |= m & ~pm[i]; pm[i] = m; }
       const e = edge[0] | edge[1];
       if (e & KB.U) nav.u = 1; if (e & KB.D) nav.d = 1; if (e & KB.L) nav.l = 1; if (e & KB.R) nav.r = 1;
       if ((e & (KB.LP | KB.HP | KB.LK)) || latch.ok) nav.ok = 1; if ((e & KB.HK) || latch.back) nav.back = 1; if (latch.start) nav.start = 1;
+      if (latch.back) nav.esc = 1;
       latch.ok = latch.back = latch.start = 0;
       pads().forEach(g => { const s = !!(g.buttons[9] && g.buttons[9].pressed); if (s && !pollInputs.ps) nav.start = 1; pollInputs.ps = s; });
     }
@@ -1885,7 +1909,7 @@ const playFight = (() => {
     function close(keepG) {
       closed = true; CUR = null; cancelAnimationFrame(raf); window.removeEventListener('keydown', kd, true); window.removeEventListener('keyup', ku, true);
       window.removeEventListener('resize', onResize); window.removeEventListener('orientationchange', onResize); document.removeEventListener('visibilitychange', onVis); window.removeEventListener('gamepadconnected', onPad);
-      try { ac && ac.close(); } catch (e) {} ov.remove(); document.body.style.overflow = prevOv; if (keepG !== true) G = null;
+      try { ac && ac.close(); } catch (e) {} ov.remove(); document.body.style.overflow = prevOv; document.documentElement.style.touchAction = prevTA; ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.removeEventListener(t, noGest, { passive: false })); if (keepG !== true) G = null;
       try { renderBoard(); } catch (e) {}
     }
 
@@ -1977,15 +2001,16 @@ const playFight = (() => {
       c.fillText('Touch: stick + buttons, with shortcut buttons for the specials (see Options)', W / 2, H - 24);
       c.fillStyle = '#ffd23a'; c.fillText('Back: HK / Esc / tap', W / 2, H - 10); addHot(0, 0, W, H, () => { sc = 'menu'; snd('back'); });
     }
-    const OPTS = ['DIFFICULTY', 'EASY SPECIAL BUTTONS', 'SOUND', 'FLIP SCREEN', 'BACK'];
+    const OPTS = ['DIFFICULTY', 'EASY SPECIAL BUTTONS', 'TOUCH MOVEMENT', 'SOUND', 'FLIP SCREEN', 'BACK'];
     const diffName = ['EASY', 'NORMAL', 'HARD'];
-    function optVals() { return ['\u25C0 ' + diffName[OPT.diff] + ' \u25B6', OPT.easy ? 'ON' : 'OFF', gameSoundOn() ? 'ON' : 'OFF', OPT.flip ? 'YES' : 'NO', '']; }
+    function optVals() { return ['\u25C0 ' + diffName[OPT.diff] + ' \u25B6', OPT.easy ? 'ON' : 'OFF', OPT.pad ? 'D-PAD' : 'STICK', gameSoundOn() ? 'ON' : 'OFF', OPT.flip ? 'YES' : 'NO', '']; }
     function optChange(i, d) {
       if (i === 0) OPT.diff = (OPT.diff + d + 3) % 3, lss('fight_diff', OPT.diff);
       else if (i === 1) { OPT.easy = !OPT.easy; lss('fight_easy', OPT.easy ? '1' : '0'); }
-      else if (i === 2) lss('game_sound', gameSoundOn() ? '0' : '1');
-      else if (i === 3) { OPT.flip = !OPT.flip; lss('fight_flip', OPT.flip ? '1' : '0'); layout(); }
-      else if (i === 4) { sc = 'menu'; } snd('menu');
+      else if (i === 2) { OPT.pad = !OPT.pad; lss('fight_pad', OPT.pad ? '1' : '0'); ctlShow(); }
+      else if (i === 3) lss('game_sound', gameSoundOn() ? '0' : '1');
+      else if (i === 4) { OPT.flip = !OPT.flip; lss('fight_flip', OPT.flip ? '1' : '0'); layout(); }
+      else if (i === 5) { sc = 'menu'; } snd('menu');
     }
 
     // ---------- fight drawing ----------
@@ -2007,8 +2032,7 @@ const playFight = (() => {
         drawFighter(c, a, V.tick); bigText(c, 'FINAL BLAST!', W / 2, 90, 44 * (0.8 + u * 0.25), ['#ffffff', palOf(a).gi2], 1, -0.05);
       }
       if (V.flash > 0) { c.fillStyle = 'rgba(255,255,255,' + V.flash * 0.7 + ')'; c.fillRect(0, 0, W, H); }
-      const nm = x => String(x || 'FRIEND').toUpperCase().slice(0, 10), myn = nm(getUserProfile().name), opn = nm(G && G.opp);
-      drawHud(c, S, V, mode === 'online' ? (me === 0 ? [myn, opn] : [opn, myn]) : [null, S.ai[1] && !S.train && mode === 'arcade' ? 'CPU' : (S.train ? 'DUMMY' : null)]);
+      drawHud(c, S, V, mode === 'online' ? (me === 0 ? [names.me, names.op] : [names.op, names.me]) : [null, S.ai[1] && !S.train && mode === 'arcade' ? 'CPU' : (S.train ? 'DUMMY' : null)]);
       if (mode === 'arcade') { c.font = '900 11px ' + FONT; c.textAlign = 'center'; c.fillStyle = '#ffd23a'; c.fillText('STAGE ' + arc.stage + ' · SCORE ' + arc.score, W / 2, 62); }
       drawAnn(c, S, V);
       if (S.train) drawTrain(c);
@@ -2017,7 +2041,7 @@ const playFight = (() => {
       const f = S.f[0], h = f.hist, runs = []; let i = h.length - 1;
       while (i >= 0 && runs.length < 9) { const e = h[i]; let n = 1; while (i - n >= 0 && h[i - n].d === e.d && h[i - n].b === e.b) n++; if (e.d !== 5 || e.b) runs.push({ d: e.d, b: e.b, n }); i -= n; }
       c.font = '700 11px monospace'; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
-      runs.forEach((r, k) => { const names = [[KB.LP, 'LP'], [KB.HP, 'HP'], [KB.LK, 'LK'], [KB.HK, 'HK']].filter(x => r.b & x[0]).map(x => x[1]).join('+'); const y = H - 40 - k * 13; c.fillStyle = 'rgba(0,0,0,.5)'; c.fillRect(14, y - 10, 104, 13); c.fillStyle = '#fff'; c.fillText((DIRG[r.d] || '') + ' ' + names, 18, y); c.fillStyle = '#9aa6d8'; c.fillText(r.n + 'f', 96, y); });
+      runs.forEach((r, k) => { const names = [[KB.LP, 'LP'], [KB.HP, 'HP'], [KB.LK, 'LK'], [KB.HK, 'HK']].filter(x => r.b & x[0]).map(x => x[1]).join('+'); const y = 112 + k * 13; c.fillStyle = 'rgba(0,0,0,.5)'; c.fillRect(14, y - 10, 104, 13); c.fillStyle = '#fff'; c.fillText((DIRG[r.d] || '') + ' ' + names, 18, y); c.fillStyle = '#9aa6d8'; c.fillText(r.n + 'f', 96, y); });
       c.textAlign = 'center'; c.fillStyle = '#ffffff'; c.font = '700 11px system-ui'; c.fillText('Dummy: ' + S.dummy.toUpperCase() + ' (change it in the pause menu)', W / 2, H - 6);
     }
     function pauseItems() { if (onl) return ['RESUME', 'SOUND: ' + (gameSoundOn() ? 'ON' : 'OFF'), 'QUIT MATCH']; const a = ['RESUME']; if (S && S.train) { a.push('DUMMY: ' + S.dummy.toUpperCase(), 'RESET POSITIONS'); } a.push('MOVE LIST', 'SOUND: ' + (gameSoundOn() ? 'ON' : 'OFF')); if (document.fullscreenEnabled && !document.fullscreenElement) a.push('FULLSCREEN'); a.push('QUIT'); return a; }
@@ -2178,7 +2202,7 @@ const playFight = (() => {
       } else if (sc === 'result') {
         if (nav.u) resI = (resI + 2) % 3; if (nav.d) resI = (resI + 1) % 3; if (nav.ok) resPick(resI); if (nav.back) resPick(2);
       } else if (sc === 'fight') {
-        if (nav.start || nav.back) { setPause(!paused); }
+        if (nav.start || nav.esc || (paused && nav.back)) { setPause(!paused); }
         if (paused) {
           const it = pauseItems(); if (nav.u) { pauseI = (pauseI + it.length - 1) % it.length; snd('menu'); } if (nav.d) { pauseI = (pauseI + 1) % it.length; snd('menu'); } if (nav.ok) pauseDo(it[pauseI]);
           if (!onl) return;
@@ -2204,15 +2228,17 @@ const playFight = (() => {
         if (S.done) { const sd = S; matchDone(); if (sc === 'fight') S = sd; }
       }
     }
-    let last = performance.now(), acc = 0, raf = 0;
+    let last = performance.now(), acc = 0, raf = 0, fpsA = 0, fpsN = 0;
     function frame(now) {
       if (closed) return; raf = requestAnimationFrame(frame);
       const dt = Math.min(100, now - last); last = now; pollInputs();
+      if (dt < 60) { fpsA += dt; fpsN++; if (fpsN >= 90) { if (fpsA / fpsN > 22 && resScale > 0.65) { resScale -= 0.15; layout(); } fpsA = 0; fpsN = 0; } }
       const rate = (sc === 'fight' && S && S.slow > 0 && (!paused || onl) && isHost) ? 0.4 : 1; acc += dt * rate;
-      let n = 0; while (acc >= 16.667 && n < 6) { acc -= 16.667; simStep(); n++; if (closed) return; nav.u = nav.d = nav.l = nav.r = nav.ok = nav.back = nav.start = 0; edge[0] = edge[1] = 0; }
+      if (rate === 1 && acc > 14.2 && acc < 19.2) acc = 16.667;
+      let n = 0; while (acc >= 16.667 && n < 6) { acc -= 16.667; simStep(); n++; if (closed) return; nav.u = nav.d = nav.l = nav.r = nav.ok = nav.back = nav.start = nav.esc = 0; edge[0] = edge[1] = 0; }
       if (n === 6) acc = 0;
       if (n > 0) { tmask.lat = 0; for (const k in klat) delete klat[k]; }
-      if (sc === 'fight' && !paused) ctlShow();
+      ctlShow();
       draw();
     }
     CUR = { close };
@@ -4927,6 +4953,7 @@ document.addEventListener('click', e => {
   const a = e.target.closest('.epc'); if (a && !e.target.closest('button')) a.classList.toggle('rev');
 });
 const PATCHNOTES = [
+  { v: '69', c: ['Fighter fixes. HK no longer opens the pause menu (only Esc, P or Start pause). The touch stick now appears under your finger instead of lower down. Pinch and double-tap zoom are blocked while the game is open. New on-screen D-pad (the default on touch; switch back to the stick in Options, Touch movement). Longer throw range, and a blocked light attack can now cancel into a throw. Snappier feel: shorter hit freeze, faster fireballs, steadier frame rate, and the game lowers its resolution by itself on slow phones. The update check now understands versions like 69.01.'] },
   { v: '68', c: ['New game: Fighter, an arcade fighting game (Games tab, 🥊). Three fighters (Kaito, Mira, Gorn), best of 3 rounds, health and timer, and a super meter. Real command inputs: Spark Ball (↓ ↘ → + punch), Rising Fist (→ ↓ ↘ + punch), Whirl Kick (↓ ↙ ← + kick), Final Blast (↓ ↘ → ↓ ↘ → + punch, full meter), throw (LP + LK), dashes (→ → / ← ←). Combos: light attacks chain into each other and cancel into specials; lows, overheads, blocking by holding back, counter hits and combo damage scaling. Modes: Arcade (5 CPU stages, continue screen, score saved to the Games leaderboard), Versus (2 players on one device with two gamepads, or a gamepad + the keyboard, or a shared keyboard), Training (input display, dummy settings) and a Move List. Controls: keyboard, gamepad (with rumble), or touch with a floating stick, 4 buttons, a throw button and optional shortcut buttons for the specials. On a phone held upright it turns the picture sideways, so turn the phone. Watch Party: challenge a friend with 👥 vs friend (both pick a fighter, the host runs the match, rematch and quit buttons, and the invite pop-up works like Pong). The guest sees the fight a fraction of a second late.'] },
   { v: '67', c: ['New loading screen: the logo, a progress bar and a cinema quote show while the app starts (also in the home-screen app) and fade out once Home is ready.'] },
   { v: '66', c: ['Games: chat with your party while you play (panel under the game), and game invitations now always arrive: before, you could miss an invite after finishing a game. New setting “Poster colors theme”: on a movie or series page the app takes its colors from the poster (back to your normal theme when you leave the page).'] },
@@ -5011,7 +5038,7 @@ async function checkUpdate(manual) {
   lastCheck = Date.now();
   try {
     const r = await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' });
-    const m = (await r.text()).match(/APP_VERSION = '(\d+)'/);
+    const m = (await r.text()).match(/APP_VERSION = '([\d.]+)'/);
     if (m && m[1] !== APP_VERSION) { if (manual) say('New version found.'); return showUpdate(m[1]); }
     if (manual) say('You have the latest version.');
   } catch (e) { if (manual) say('Could not check. Are you online?'); }
