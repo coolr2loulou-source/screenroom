@@ -275,6 +275,43 @@ body.theater #next{position:fixed;left:50%;transform:translateX(-50%);bottom:cal
 #sr-load .lq{max-width:340px;min-height:2.6em;font-style:italic;color:var(--muted,#8d97a8);font-size:15px;line-height:1.4}
 @keyframes srload{0%{left:-40%}100%{left:100%}}
 @media (prefers-reduced-motion:reduce){#sr-load .lbar i{animation:none;width:100%;opacity:.6}#sr-load{transition:none}}
+/* Settings, interface layout and news (v70) */
+.set .hd{margin-bottom:4px}
+.settabs{display:flex;gap:6px;overflow-x:auto;padding:4px 0 12px;margin:0 0 6px;scrollbar-width:none}
+.settabs::-webkit-scrollbar{display:none}
+.settab{flex:0 0 auto;border-radius:999px;padding:8px 15px;background:transparent;color:var(--muted);border-color:transparent;white-space:nowrap}
+.settab.on{background:var(--surface);color:var(--text);border-color:var(--line);font-weight:700}
+.setpane label{display:flex;gap:10px;align-items:flex-start;margin:10px 0;line-height:1.35;cursor:pointer}
+.setpane label input[type=checkbox]{margin-top:3px;flex:none;width:18px;height:18px}
+.setpane .tcolor{flex:none}
+.setpane select:not(.uisel){padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--text);font-size:15px}
+.setpane .slider-group input{width:100%}
+.setgrp{margin:8px 0 14px;padding:2px 14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;max-width:640px}
+.setgrp label{margin:12px 0}
+.setdet{margin:14px 0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px;max-width:640px}
+.setdet summary{cursor:pointer;font-weight:600}
+.uirow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);max-width:640px}
+.setgrp .uirow:last-child{border-bottom:0}
+.uirow select{padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--text);max-width:55%}
+.setmsg{min-height:1.5em;margin-top:10px}
+.setbar{display:flex;gap:10px;justify-content:center;margin:0 0 16px}
+details.tools{width:100%}
+details.tools summary{cursor:pointer;color:var(--muted);padding:6px 2px;list-style:none}
+details.tools summary::-webkit-details-marker{display:none}
+.toolsin{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.moretools{margin:6px 0 12px}
+.newsrow .hd button{padding:4px 10px;font-size:14px}
+.nrail{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;scroll-snap-type:x proximity;scrollbar-width:thin}
+.ncard{flex:0 0 276px;display:flex;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px;text-decoration:none;color:var(--text);cursor:default;scroll-snap-align:start;transition:border-color .15s,transform .15s}
+a.ncard,.ncard[data-t]{cursor:pointer}
+a.ncard:hover,.ncard[data-t]:hover,.ncard:focus-visible{border-color:var(--accent);transform:translateY(-2px)}
+.nimg{flex:0 0 54px;height:80px;border-radius:8px;overflow:hidden;background:#222a39;display:flex;align-items:center;justify-content:center;font-size:22px}
+.nimg img{width:100%;height:100%;object-fit:cover;display:block}
+.nbody{min-width:0;display:flex;flex-direction:column;gap:3px}
+.ntag{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px}
+.ntitle{font-size:14px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.ncard small{color:var(--muted)}
+@media (max-width:600px){.ncard{flex-basis:84%}.uirow select{max-width:60%}}
 </style>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
@@ -309,7 +346,7 @@ body.theater #next{position:fixed;left:50%;transform:translateX(-50%);bottom:cal
 <p class="attr">This product uses the TMDB API but is not endorsed or certified by TMDB. <span id="contact"></span></p>
 
 <script>
-const APP_VERSION = '69';
+const APP_VERSION = '70';
 const IMG = 'https://image.tmdb.org/t/p/';
 const app = document.getElementById('app');
 const q = document.getElementById('q');
@@ -2704,9 +2741,11 @@ const buildBackup = () => ({ app: 'screenroom', v: 1, key, profile: getUserProfi
 async function homeExtras() {
   if (!key || tab !== 'all') return;
   const hero0 = app.querySelector('.hero');
-  if (hero0 && !document.getElementById('moods')) {
+  const hh0 = homeHidden();
+  newsInit(hero0, hh0);
+  if (hero0 && !document.getElementById('moods') && hh0.indexOf('moods') < 0) {
     const moods = [[35, '😂 Comedy'], [27, '😱 Horror'], [10749, '💘 Romance'], [878, '🚀 Sci-Fi'], [53, '🧠 Thriller'], [16, '🎨 Animation'], [28, '💥 Action']];
-    hero0.insertAdjacentHTML('afterend', `<div class="pfbar" id="moods" style="flex-wrap:wrap;margin-top:14px"><span class="meta" style="align-self:center">Tonight I feel like:</span>${moods.map(([g, l]) => `<button data-g="${g}">${l}</button>`).join('')}</div>`);
+    (document.getElementById('newsrow') || hero0).insertAdjacentHTML('afterend', `<div class="pfbar" id="moods" style="flex-wrap:wrap;margin-top:14px"><span class="meta" style="align-self:center">Tonight I feel like:</span>${moods.map(([g, l]) => `<button data-g="${g}">${l}</button>`).join('')}</div>`);
     document.querySelectorAll('#moods button').forEach(b => b.onclick = async () => {
       try {
         const r = await api('/discover/movie', `&with_genres=${b.dataset.g}&sort_by=popularity.desc&vote_count.gte=300`);
@@ -2721,7 +2760,7 @@ async function homeExtras() {
       const p = pins[i], l = r.status === 'fulfilled' ? (r.value.results || []).filter(x => x.poster_path && !isBlocked(p.type, x.id) && !isNoInt(p.type, x.id)).slice(0, 20) : [];
       return l.length ? `<section class="row"><div class="hd"><h2 class="sec">★ ${esc(p.name)} ${p.type === 'tv' ? 'series' : 'movies'}</h2><button class="unpin" data-t="${p.type}" data-i="${p.id}">Unpin</button></div><div class="rail">${l.map(x => `<div class="card" tabindex="0" data-type="${p.type}" data-id="${x.id}"><img loading="lazy" decoding="async" src="${IMG}w342${x.poster_path}" alt="${esc(x.title || x.name)}"><div>${esc(x.title || x.name)}<small>${p.type === 'tv' ? 'Series' : 'Movie'}</small></div></div>`).join('')}</div></section>` : '';
     }).join('');
-    const mo = document.getElementById('moods');
+    const mo = document.getElementById('moods') || document.getElementById('newsrow') || hero0;
     if (html && mo && tab === 'all') {
       mo.insertAdjacentHTML('afterend', `<div id="pinrows">${html}</div>`);
       bindCards();
@@ -2755,7 +2794,7 @@ async function homeExtras() {
   // "Picked for you": score recommendations by how often they come up and how well their genres match your history
   try {
     const base = uniq.slice(0, 10);
-    if (!base.length) return;
+    if (!base.length || hh0.indexOf('picked') >= 0) return;
     const dets = await Promise.allSettled(base.map(x => api(`/${x.type}/${x.id}`)));
     const gw = {};
     dets.forEach((d, i) => { if (d.status === 'fulfilled') (d.value.genres || []).forEach(g => { gw[g.id] = (gw[g.id] || 0) + (base.length - i); }); });
@@ -2774,7 +2813,7 @@ async function homeExtras() {
     const hero = app.querySelector('.hero');
     if (top.length < 4 || !hero) return;
     const cards = top.map(({ m, t }) => `<div class="card" tabindex="0" data-type="${t}" data-id="${m.id}">${m.vote_average > 0 ? `<b class="rt">★ ${m.vote_average.toFixed(1)}</b>` : ''}<img loading="lazy" decoding="async" src="${IMG}w342${m.poster_path}" alt="${esc(m.title || m.name)}"><div>${esc(m.title || m.name)}<small>${t === 'tv' ? 'Series' : 'Movie'} · ${(m.release_date || m.first_air_date || '').slice(0, 4)}</small></div></div>`).join('');
-    hero.insertAdjacentHTML('afterend', `<section class="row" id="picked"><div class="hd"><h2 class="sec">Picked for you</h2></div><div class="railwrap"><button class="arr l" aria-label="Scroll left">‹</button><div class="rail">${cards}</div><button class="arr r" aria-label="Scroll right">›</button></div></section>`);
+    (document.getElementById('newsrow') || hero).insertAdjacentHTML('afterend', `<section class="row" id="picked"><div class="hd"><h2 class="sec">Picked for you</h2></div><div class="railwrap"><button class="arr l" aria-label="Scroll left">‹</button><div class="rail">${cards}</div><button class="arr r" aria-label="Scroll right">›</button></div></section>`);
     const w = document.querySelector('#picked .railwrap'), r = w.querySelector('.rail');
     w.querySelector('.l').onclick = () => r.scrollBy({ left: -r.clientWidth * 0.85, behavior: 'smooth' });
     w.querySelector('.r').onclick = () => r.scrollBy({ left: r.clientWidth * 0.85, behavior: 'smooth' });
@@ -3731,15 +3770,16 @@ async function homeView() {
     const type = i.media_type || 'movie', name = i.title || i.name, year = (i.release_date || i.first_air_date || '').slice(0, 4);
     return `<div class="card" tabindex="0" data-type="${type}" data-id="${i.id}">${i.vote_average > 0 ? `<b class="rt">★ ${i.vote_average.toFixed(1)}</b>` : ''}<img loading="lazy" decoding="async" src="${IMG}w342${i.poster_path}" alt="${esc(name)}"><div>${esc(name)}<small>${type === 'tv' ? 'Series' : 'Movie'}${year ? ' · ' + year : ''}</small></div></div>`;
   };
-  const row = (t, l) => l.length ? `<section class="row"><div class="hd"><h2 class="sec">${t}</h2></div><div class="railwrap"><button class="arr l" aria-label="Scroll left">‹</button><div class="rail">${l.slice(0, 20).map(cardH).join('')}</div><button class="arr r" aria-label="Scroll right">›</button></div></section>` : '';
+  const hh = homeHidden();
+  const row = (t, l, k) => l.length && hh.indexOf(k) < 0 ? `<section class="row"><div class="hd"><h2 class="sec">${t}</h2></div><div class="railwrap"><button class="arr l" aria-label="Scroll left">‹</button><div class="rail">${l.slice(0, 20).map(cardH).join('')}</div><button class="arr r" aria-label="Scroll right">›</button></div></section>` : '';
   let heroHtml = '';
   if (hero) {
     const ov = hero.overview || '', bw = innerWidth > 700 ? 'w1280' : 'w780';
     heroHtml = `<section class="hero" style="background-image:linear-gradient(0deg,color-mix(in srgb,var(--bg) 92%,transparent),color-mix(in srgb,var(--bg) 10%,transparent) 70%),linear-gradient(90deg,color-mix(in srgb,var(--bg) 75%,transparent),transparent 70%),url(${IMG}${bw}${hero.backdrop_path})"><div class="hero-in"><span class="meta">Trending today</span><h1 dir="auto">${esc(hero.title || hero.name)}</h1><p dir="auto">${esc(ov.slice(0, 220))}${ov.length > 220 ? '…' : ''}</p><button class="primary" id="heroplay">▶ Watch</button><button id="sur">Surprise me</button></div></section>`;
   }
   const html = heroHtml + cwRow().replace('<div class="grid">', '<div class="rail">') +
-    row('Trending today', day) + row('Trending this week', week) + row('In theaters now', now) +
-    row('Popular series', ps) + row('Popular movies', pm) + row('Top rated movies', tm) + row('Top rated series', ts);
+    row('Trending today', day, 'day') + row('Trending this week', week, 'week') + row('In theaters now', now, 'now') +
+    row('Popular series', ps, 'ps') + row('Popular movies', pm, 'pm') + row('Top rated movies', tm, 'tm') + row('Top rated series', ts, 'ts');
   updateBackVisibility(); clearHash();
   app.innerHTML = html || emptyState('Nothing to show', 'Check your connection and try again.');
   bindCards();
@@ -3908,7 +3948,146 @@ function statsDashboard() {
   </div>`;
 }
 
-function backupBox() {
+// ===== Settings with tabs, title-page button layout, Home rows and the News strip (v70) =====
+const SET_TABS = [['general', 'General'], ['look', 'Appearance'], ['ui', 'Interface'], ['news', 'News'], ['data', 'Account & data'], ['about', 'About']];
+const UI_BTNS = [
+  ['fav', 'Add to my list', 'show'], ['addlist', 'Add to a custom list', 'show'], ['tramp', 'Trailer', 'show'], ['theater', 'Theater mode', 'show'], ['share', 'Share', 'show'],
+  ['noint', 'Not interested', 'more'], ['sleepbtn', 'Sleep timer', 'more'], ['postbtn', 'Poster (image link)', 'more'], ['customposterbtn', 'Custom poster (saved list)', 'more'],
+  ['copylink', 'Copy deep link', 'more'], ['sandbtn', 'Embed test', 'more'], ['lnk_imdb', 'IMDb link', 'more'], ['lnk_rt', 'Rotten Tomatoes link', 'more'], ['lnk_tmdb', 'TMDB link', 'more']
+];
+const HOME_ROWS = [['news', 'News & release radar'], ['picked', 'Picked for you'], ['moods', 'Mood buttons'], ['day', 'Trending today'], ['week', 'Trending this week'], ['now', 'In theaters now'], ['ps', 'Popular series'], ['pm', 'Popular movies'], ['tm', 'Top rated movies'], ['ts', 'Top rated series']];
+const NEWS_SRC = [
+  ['radar', '\uD83C\uDFAC Release radar', 'Upcoming movies and their release dates (from TMDB)', ''],
+  ['eps', '\uD83D\uDCFA My series', 'Next episode dates for the series in your list (from TMDB)', ''],
+  ['variety', 'Variety', 'Entertainment business news', 'https://variety.com/feed/'],
+  ['variety_film', 'Variety: Film', 'Film news only', 'https://variety.com/v/film/feed/'],
+  ['deadline', 'Deadline', 'Hollywood news, casting, box office', 'https://deadline.com/feed/'],
+  ['thr', 'The Hollywood Reporter', 'Entertainment news and reviews', 'https://www.hollywoodreporter.com/feed/'],
+  ['collider', 'Collider', 'Movie and TV news, trailers', 'https://collider.com/feed/'],
+  ['indiewire', 'IndieWire', 'Film, TV and awards', 'https://www.indiewire.com/feed/'],
+  ['screenrant', 'Screen Rant', 'Trailers, casting and pop culture', 'https://screenrant.com/feed/'],
+  ['slashfilm', '/Film', 'Movie, TV and pop culture news', 'https://feeds.feedburner.com/slashfilm'],
+  ['guardian', 'The Guardian: Film', 'Film news and reviews', 'https://www.theguardian.com/uk/film/rss'],
+  ['darkh', 'Dark Horizons', 'Movie news', 'https://www.darkhorizons.com/feed/']
+];
+const NEWS_DEF = { on: true, n: 6, src: { radar: true, eps: true }, custom: '', fmt: 'text', rl: 'app', al: true, ext: true };
+const lsObj = k => { try { const o = JSON.parse(localStorage.getItem(k) || '{}'); return o && typeof o === 'object' && !Array.isArray(o) ? o : {}; } catch (e) { return {}; } };
+const uiMode = id => lsObj('ui_btn')[id] || (UI_BTNS.find(x => x[0] === id) || [0, 0, 'show'])[2];
+const homeHidden = () => { try { const a = JSON.parse(localStorage.getItem('home_hide') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+const getNewsCfg = () => { const o = lsObj('news_cfg'); return Object.assign({}, NEWS_DEF, o, { src: Object.assign({}, NEWS_DEF.src, o.src || {}) }); };
+const saveNewsCfg = p => { const c = getNewsCfg(); Object.keys(p).forEach(k => { if (k === 'src') Object.assign(c.src, p.src); else c[k] = p[k]; }); try { localStorage.setItem('news_cfg', JSON.stringify(c)); } catch (e) {} return c; };
+let settingsOn = null;
+const openSettings = t => { if (!activeView || activeView.kind !== 'settings') pushHistoryState(); settingsView(t); };
+const reView = () => (activeView && activeView.kind === 'settings' ? settingsView(settingsOn) : listView());
+
+// ----- title page: show / "More" / hidden buttons -----
+function applyUiLayout() {
+  const find = id => id.indexOf('lnk_') === 0 ? app.querySelector(id === 'lnk_imdb' ? 'a[href*="imdb.com"]' : id === 'lnk_rt' ? 'a[href*="google.com/search"]' : 'a[href*="themoviedb.org"]') : document.getElementById(id);
+  const more = [];
+  UI_BTNS.forEach(x => { const el = find(x[0]); if (!el) return; const m = uiMode(x[0]); if (m === 'hide') el.style.display = 'none'; else if (m === 'more') more.push(el); });
+  const acts = app.querySelector('.acts'); if (!more.length || !acts) return;
+  const box = document.createElement('div'); box.id = 'moretools'; box.className = 'acts moretools'; box.style.display = 'none';
+  more.forEach(el => box.appendChild(el));
+  const tg = document.createElement('button'); tg.id = 'moretoggle'; tg.textContent = '\u22EF More';
+  tg.onclick = () => { const o = box.style.display === 'none'; box.style.display = o ? '' : 'none'; tg.textContent = o ? '\u25B4 Less' : '\u22EF More'; };
+  acts.appendChild(tg); acts.insertAdjacentElement('afterend', box);
+}
+
+// ----- News strip on Home -----
+const newsFmt = (iso, fmt) => {
+  const d = new Date(iso + 'T00:00:00'); if (isNaN(d)) return iso;
+  const dd = String(d.getDate()).padStart(2, '0'), mm = String(d.getMonth() + 1).padStart(2, '0');
+  if (fmt === 'dmy') return dd + '.' + mm; if (fmt === 'mdy') return mm + '.' + dd;
+  try { return d.toLocaleDateString(lang, { month: 'short', day: 'numeric' }); } catch (e) { return iso; }
+};
+const newsRel = iso => { const n = Math.round((new Date(iso + 'T00:00:00') - new Date(new Date().toDateString())) / 86400000); return n <= 0 ? 'today' : n === 1 ? 'tomorrow' : 'in ' + n + ' days'; };
+const newsAgo = ts => { if (!ts) return ''; const m = Math.max(0, Math.round((Date.now() - ts) / 60000)); return m < 60 ? (m < 2 ? 'just now' : m + ' min ago') : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago'; };
+const feedTime = s => { if (!s) return 0; s = String(s); const t = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(s) ? Date.parse(s.replace(' ', 'T') + 'Z') : Date.parse(s); return isNaN(t) ? 0 : t; };
+const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return 'Feed'; } };
+async function fetchT(url, ms) { const c = new AbortController(), t = setTimeout(() => c.abort(), ms || 9000); try { return await fetch(url, { signal: c.signal }); } finally { clearTimeout(t); } }
+async function fetchFeed(url) {
+  try {
+    const r = await fetchT('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(url));
+    if (r.ok) { const j = await r.json(); if (j && j.status === 'ok' && Array.isArray(j.items) && j.items.length) return j.items.slice(0, 12).map(it => ({ title: String(it.title || ''), link: String(it.link || ''), ts: feedTime(it.pubDate), img: String(it.thumbnail || (it.enclosure && /image/i.test(it.enclosure.type || '') ? it.enclosure.link : '') || '') })); }
+  } catch (e) {}
+  try {
+    const r = await fetchT('https://api.allorigins.win/raw?url=' + encodeURIComponent(url));
+    if (r.ok) {
+      const x = new DOMParser().parseFromString(await r.text(), 'text/xml');
+      return [].slice.call(x.querySelectorAll('item, entry')).slice(0, 12).map(n => {
+        const g = t => { const e = n.querySelector(t); return e ? (e.textContent || '').trim() : ''; };
+        let link = g('link'); if (!link) { const l = n.querySelector('link[href]'); link = l ? l.getAttribute('href') : ''; }
+        const th = n.getElementsByTagName('media:thumbnail')[0] || n.getElementsByTagName('media:content')[0], en = n.querySelector('enclosure');
+        return { title: g('title'), link, ts: feedTime(g('pubDate') || g('published') || g('updated')), img: th ? (th.getAttribute('url') || '') : (en && /image/i.test(en.getAttribute('type') || '') ? en.getAttribute('url') : '') };
+      }).filter(x => x.title);
+    }
+  } catch (e) {}
+  return [];
+}
+async function newsRadar() {
+  const d = await api('/movie/upcoming'), today = new Date().toLocaleDateString('en-CA');
+  const l = (d.results || []).filter(x => x.release_date && x.release_date >= today && x.poster_path && !isNoInt('movie', x.id)).sort((a, b) => (b.popularity || 0) - (a.popularity || 0)).slice(0, 8);
+  l.sort((a, b) => a.release_date.localeCompare(b.release_date));
+  return l.map(x => ({ kind: 'radar', type: 'movie', id: x.id, title: x.title, date: x.release_date, poster: x.poster_path || '' }));
+}
+async function newsEps() {
+  const favTv = lsGet('fav').filter(x => x.type === 'tv').slice(0, 12), today = new Date().toLocaleDateString('en-CA'), out = [];
+  const rs = await Promise.allSettled(favTv.map(x => api('/tv/' + x.id)));
+  rs.forEach((r, i) => { const n = r.status === 'fulfilled' && r.value.next_episode_to_air; if (n && n.air_date && n.air_date >= today) out.push({ kind: 'ep', type: 'tv', id: favTv[i].id, title: favTv[i].name, date: n.air_date, s: n.season_number, e: n.episode_number, poster: favTv[i].poster || '' }); });
+  out.sort((a, b) => a.date.localeCompare(b.date)); return out;
+}
+async function loadNews(c, force) {
+  const sig = JSON.stringify([c.src, c.custom, lang, c.n]);
+  let cache = null; try { cache = JSON.parse(localStorage.getItem('news_cache') || 'null'); } catch (e) {}
+  if (!force && cache && cache.sig === sig && Date.now() - cache.t < 1800000 && Array.isArray(cache.items)) return { items: cache.items, t: cache.t, stats: cache.stats || {} };
+  const rel = [], art = [], stats = {}, jobs = [];
+  if (c.src.radar) jobs.push(newsRadar().then(l => { stats['Release radar'] = l.length; l.forEach(x => rel.push(x)); }).catch(() => { stats['Release radar'] = 0; }));
+  if (c.src.eps) jobs.push(newsEps().then(l => { stats['My series'] = l.length; l.forEach(x => rel.push(x)); }).catch(() => { stats['My series'] = 0; }));
+  const feed = (name, url) => jobs.push(fetchFeed(url).then(l => { stats[name] = l.length; l.slice(0, 8).forEach(x => art.push(Object.assign({ kind: 'art', src: name }, x))); }).catch(() => { stats[name] = 0; }));
+  NEWS_SRC.forEach(x => { if (x[3] && c.src[x[0]]) feed(x[1], x[3]); });
+  const cu = String(c.custom || '').trim(); if (/^https?:\/\//i.test(cu)) feed(hostOf(cu), cu);
+  await Promise.all(jobs);
+  rel.sort((a, b) => a.date.localeCompare(b.date)); art.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  let r = rel.slice(0, art.length ? Math.ceil(c.n / 2) : c.n), a = art.slice(0, c.n - r.length);
+  if (r.length + a.length < c.n) r = rel.slice(0, c.n - a.length);
+  const items = []; for (let i = 0; i < Math.max(r.length, a.length); i++) { if (r[i]) items.push(r[i]); if (a[i]) items.push(a[i]); }
+  try { localStorage.setItem('news_cache', JSON.stringify({ sig, t: Date.now(), items, stats })); } catch (e) {}
+  return { items, t: Date.now(), stats };
+}
+function newsCard(it, c) {
+  const tag = it.kind === 'radar' ? '\uD83C\uDFAC Coming soon' : it.kind === 'ep' ? '\uD83D\uDCFA New episode' : esc(it.src || 'News');
+  let title, sub;
+  if (it.kind === 'radar') { title = '<b>' + esc(it.title) + '</b> is coming out <b>' + esc(newsFmt(it.date, c.fmt)) + '</b>'; sub = newsRel(it.date); }
+  else if (it.kind === 'ep') { title = '<b>' + esc(it.title) + '</b> S' + (+it.s || 1) + ' E' + (+it.e || 1) + ' airs <b>' + esc(newsFmt(it.date, c.fmt)) + '</b>'; sub = newsRel(it.date); }
+  else { title = esc(it.title); sub = newsAgo(it.ts); }
+  const img = it.kind === 'art' ? (/^https:\/\//i.test(it.img || '') ? '<img loading="lazy" referrerpolicy="no-referrer" src="' + esc(it.img) + '" alt="">' : '') : (it.poster ? '<img loading="lazy" src="' + IMG + 'w154' + esc(it.poster) + '" alt="">' : '');
+  const inner = '<div class="nimg">' + (img || '\uD83D\uDCF0') + '</div><div class="nbody"><span class="ntag">' + tag + '</span><div class="ntitle" dir="auto">' + title + '</div><small>' + esc(sub) + '</small></div>';
+  if (it.kind === 'art') return c.al && /^https?:\/\//i.test(it.link || '') ? '<a class="ncard" href="' + esc(it.link) + '"' + (c.ext ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' + inner + '</a>' : '<div class="ncard">' + inner + '</div>';
+  if (c.rl === 'none') return '<div class="ncard">' + inner + '</div>';
+  return '<div class="ncard" tabindex="0" role="link" data-t="' + (it.type === 'tv' ? 'tv' : 'movie') + '" data-i="' + (+it.id || 0) + '">' + inner + '</div>';
+}
+async function fillNews(force) {
+  const host = document.getElementById('newsbody'); if (!host) return;
+  const c = getNewsCfg(); let res;
+  try { res = await loadNews(c, force); } catch (e) { res = { items: [] }; }
+  const h2 = document.getElementById('newsbody'); if (!h2 || tab !== 'all' || activeView.kind !== 'home') return;
+  if (!res.items.length) { h2.innerHTML = '<p class="meta">No news right now. <button id="newsretry">Try again</button> or pick other sources in \u2699.</p>'; const rb = document.getElementById('newsretry'); if (rb) rb.onclick = () => { h2.innerHTML = '<p class="meta">Loading news\u2026</p>'; fillNews(true); }; return; }
+  h2.innerHTML = res.items.map(it => newsCard(it, c)).join('');
+  h2.querySelectorAll('.ncard[data-t]').forEach(el => {
+    const go = () => { const t = el.dataset.t, i = el.dataset.i; if (c.rl === 'tmdb') { const u = 'https://www.themoviedb.org/' + t + '/' + i; if (c.ext) window.open(u, '_blank', 'noopener'); else location.href = u; } else watch(t, i); };
+    el.onclick = go; el.onkeydown = ev => { if (ev.key === 'Enter') go(); };
+  });
+}
+function newsInit(hero0, hh) {
+  const c = getNewsCfg(); if (!hero0 || !c.on || hh.indexOf('news') >= 0 || document.getElementById('newsrow')) return;
+  hero0.insertAdjacentHTML('afterend', '<section class="row newsrow" id="newsrow"><div class="hd"><h2 class="sec">\uD83D\uDCF0 What\u2019s new</h2><span><button id="newsref" title="Refresh">\u21BB</button> <button id="newsset" title="News settings">\u2699</button></span></div><div id="newsbody" class="nrail"><p class="meta">Loading news\u2026</p></div></section>');
+  document.getElementById('newsref').onclick = () => { const b = document.getElementById('newsbody'); if (b) b.innerHTML = '<p class="meta">Loading news\u2026</p>'; fillNews(true); };
+  document.getElementById('newsset').onclick = () => openSettings('news');
+  fillNews(false);
+}
+
+// ----- settings panes -----
+function settingsPanes() {
   const isSharedKey = !key || key === '5d0979bf39cd11dbb4d24177b8b4b76c';
   const disc = getDiscordProfile();
   const discordSection = `<div class="row"><h2 class="sec">Discord Account</h2>
@@ -3926,26 +4105,18 @@ function backupBox() {
          <button id="linkdiscord" style="background:#5865F2;color:#fff;border-color:#5865F2;font-weight:700">🎮 Connect Discord Account</button>`
     }
   </div>`;
-  return discordSection + `<div class="row"><h2 class="sec">Backup & Key Management</h2>
-    ${isSharedKey ? `<div style="background:rgba(255,180,50,0.12);border:1px solid rgba(255,180,50,0.45);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#ffd080;line-height:1.45">
-      ⚠️ <b>Warning — Shared Temporary Key Active:</b> You are currently using the shared temporary TMDB API key. Because this key is shared across temporary/Discord sessions, it may hit rate limits. It is strongly recommended to replace it with your own personal key from <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:underline">themoviedb.org</a>.
-      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-        <input id="newtmdbkey" placeholder="Paste your personal TMDB API key" style="flex:1;min-width:200px;padding:7px 10px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:13px">
-        <button id="savetmdbkey" style="background:var(--accent);color:#141922;border-color:var(--accent);font-weight:700;padding:7px 12px;font-size:13px">Save Personal Key</button>
-      </div>
-    </div>` : ''}
-    <p class="meta">Move your list, history and progress to another device. The file also contains your TMDB key, so keep it private.</p>
-    <div class="bk"><button id="exp">Export backup</button><button id="imp">Import backup</button><button id="p2psend">📡 Send to another device</button><button id="p2precv">📥 Receive from another device</button><button id="forgetkey" style="background:#4a2222;border-color:#7a3333">Forget TMDB Key (Logout)</button></div>
-    <input id="impf" type="file" accept=".json,application/json" hidden>
-    <p id="bkmsg" class="meta"></p></div>
-    
-    <div class="row"><h2 class="sec">Appearance & Customization</h2>
-    <p class="meta">Custom Branding Logo Name</p>
-    <input id="brandinput" value="${esc(customBrand)}" placeholder="Personal App Name" style="padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--text);margin-bottom:12px;width:100%;max-width:320px">
-    
+  const msg = '<p id="bkmsg" class="meta setmsg"></p>';
+  const general = `<div class="row"><h2 class="sec">General</h2>
+    <p class="meta">Language of titles and descriptions</p>
+    <select id="lang">${[['en-US', 'English'], ['fr-FR', 'Français'], ['ar-SA', 'العربية'], ['es-ES', 'Español']].map(([v, n]) => `<option value="${v}"${lang === v ? ' selected' : ''}>${n}</option>`).join('')}</select>
+    <div class="setgrp">
+      <label><input type="checkbox" id="soundtoggle"${soundEnabled ? ' checked' : ''}> Enable UI Click Sound FX (Web Audio API)</label>
+      <label><input type="checkbox" id="nospoil"${localStorage.getItem('nospoil') === '1' ? ' checked' : ''}> Spoiler-free mode (blur unwatched episode images and summaries; tap to reveal)</label>
+      <label><input type="checkbox" id="hidewtoggle"${localStorage.getItem('hidew') === '1' ? ' checked' : ''}> Hide titles I already finished from the Home rows</label>
+    </div>${msg}</div>`;
+  const look = `<div class="row"><h2 class="sec">Appearance</h2>
     <p class="meta">Theme mode</p>
     <select id="thmsel"><option value="dark"${!document.body.classList.contains('light') ? ' selected' : ''}>Dark mode</option><option value="light"${document.body.classList.contains('light') ? ' selected' : ''}>Light mode</option></select>
-    
     <p class="meta" style="margin-top:12px">Accent color</p>
     <div class="theme-opts">
       <div class="tcolor" style="background:#ff7a45" data-color="#ff7a45" title="Orange"></div>
@@ -3968,14 +4139,10 @@ function backupBox() {
       <label class="meta">Cards <input type="color" id="csf" value="${getCT().surface || '#1e2532'}"></label>
       <button id="cthreset">Reset colors</button>
     </div>
-
-    <div style="margin-top:12px">
-      <label><input type="checkbox" id="soundtoggle"${soundEnabled ? ' checked' : ''}> Enable UI Click Sound FX (Web Audio API)</label>
+    <div class="setgrp">
       <label><input type="checkbox" id="autotheme"${localStorage.getItem('autotheme') === '1' ? ' checked' : ''}> Auto light/dark theme by time of day (light 7:00–19:00)</label>
-      <label><input type="checkbox" id="nospoil"${localStorage.getItem('nospoil') === '1' ? ' checked' : ''}> Spoiler-free mode (blur unwatched episode images and summaries; tap to reveal)</label>
       <label><input type="checkbox" id="postertheme"${localStorage.getItem('postertheme') === '1' ? ' checked' : ''}> Poster colors theme (title pages take the colors of the poster)</label>
     </div>
-
     <div class="slider-group">
       <label class="meta">Card Corner Roundness: <span id="radval">8px</span></label>
       <input type="range" id="radslider" min="0" max="24" value="${parseInt(getComputedStyle(document.documentElement).getPropertyValue('--radius')) || 8}">
@@ -3985,11 +4152,44 @@ function backupBox() {
       <label class="meta">Ambient Backdrop Intensity: <span id="bgval">25%</span></label>
       <input type="range" id="bgslider" min="0" max="100" value="${Math.round((parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bg-opacity')) || 0.25) * 100)}">
     </div>
-    </div>
-
-    <div class="row"><h2 class="sec">App & System</h2>
-    <p class="meta">Language of titles and descriptions</p>
-    <select id="lang">${[['en-US', 'English'], ['fr-FR', 'Français'], ['ar-SA', 'العربية'], ['es-ES', 'Español']].map(([v, n]) => `<option value="${v}"${lang === v ? ' selected' : ''}>${n}</option>`).join('')}</select>
+    <details class="setdet"><summary>Personalise: app name</summary><p class="meta">Custom Branding Logo Name</p>
+    <input id="brandinput" value="${esc(customBrand)}" placeholder="Personal App Name" style="padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--text);margin-bottom:12px;width:100%;max-width:320px"></details>${msg}</div>`;
+  const uiMap = lsObj('ui_btn'), hh = homeHidden(), nc = getNewsCfg();
+  const sel = (id, v, opts, cls) => '<select' + (id ? ' id="' + id + '"' : '') + (cls ? ' class="' + cls + '"' : '') + '>' + opts.map(o => '<option value="' + o[0] + '"' + (String(v) === String(o[0]) ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>';
+  const ui = `<div class="row"><h2 class="sec">Interface</h2>
+    <p class="meta">Choose what you see on a title page. Anything set to “In ⋯ More” sits behind a single More button.</p>
+    <div class="acts"><button id="uipre_min">Minimal</button><button id="uipre_def">Default</button><button id="uipre_all">Show everything</button></div>
+    <div class="setgrp">${UI_BTNS.map(x => '<div class="uirow"><span>' + esc(x[1]) + '</span>' + sel('', uiMap[x[0]] || x[2], [['show', 'Visible'], ['more', 'In \u22EF More'], ['hide', 'Hidden']], 'uisel" data-id="' + x[0]) + '</div>').join('')}</div>
+    <h2 class="sec" style="margin-top:22px">Home rows</h2>
+    <p class="meta">Untick a row to hide it from the Home page.</p>
+    <div class="setgrp">${HOME_ROWS.map(x => '<label><input type="checkbox" class="hrow" data-k="' + x[0] + '"' + (hh.indexOf(x[0]) < 0 ? ' checked' : '') + '> ' + esc(x[1]) + '</label>').join('')}</div>${msg}</div>`;
+  const news = `<div class="row"><h2 class="sec">News on Home</h2>
+    <div class="setgrp"><label><input type="checkbox" id="nw_on"${nc.on ? ' checked' : ''}> Show the “What’s new” strip on Home</label></div>
+    <p class="meta">Sources</p>
+    <div class="setgrp">${NEWS_SRC.map(x => '<label><input type="checkbox" class="nw_src" data-k="' + x[0] + '"' + (nc.src[x[0]] ? ' checked' : '') + '> <span><b>' + x[1] + '</b><br><small class="meta">' + esc(x[2]) + '</small></span></label>').join('')}</div>
+    <p class="meta">Your own RSS feed (optional)</p>
+    <input id="nw_custom" placeholder="https://example.com/feed.xml" value="${esc(nc.custom)}" style="width:100%;max-width:460px;padding:9px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--text)">
+    <div class="uirow"><span>How many items</span>${sel('nw_n', nc.n, [[3, '3'], [4, '4'], [6, '6'], [8, '8'], [10, '10'], [12, '12']])}</div>
+    <div class="uirow"><span>Date style</span>${sel('nw_fmt', nc.fmt, [['text', 'Dec 18'], ['dmy', '18.12'], ['mdy', '12.18']])}</div>
+    <div class="uirow"><span>Release and episode cards open</span>${sel('nw_rl', nc.rl, [['app', 'The title page in the app'], ['tmdb', 'The TMDB website'], ['none', 'Nothing (text only)']])}</div>
+    <div class="uirow"><span>Articles are links</span>${sel('nw_al', nc.al ? '1' : '0', [['1', 'Yes, open the article'], ['0', 'No, text only']])}</div>
+    <div class="uirow"><span>Open links in</span>${sel('nw_ext', nc.ext ? '1' : '0', [['1', 'A new tab'], ['0', 'The same tab']])}</div>
+    <div class="acts" style="margin-top:12px"><button id="nw_refresh">Refresh now</button><button id="nw_clear">Clear saved news</button></div>
+    <p id="nw_status" class="meta setmsg"></p>${msg}
+    <p class="meta" style="font-size:12px">Articles come from the sites’ public RSS feeds through a free public RSS converter (rss2json, then allorigins as a backup), so those services can see which feed you read. The release radar and your series use TMDB only. News is kept for 30 minutes.</p></div>`;
+  const data = discordSection + `<div class="row"><h2 class="sec">Backup & Key Management</h2>
+    ${isSharedKey ? `<div style="background:rgba(255,180,50,0.12);border:1px solid rgba(255,180,50,0.45);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#ffd080;line-height:1.45">
+      ⚠️ <b>Warning — Shared Temporary Key Active:</b> You are currently using the shared temporary TMDB API key. Because this key is shared across temporary/Discord sessions, it may hit rate limits. It is strongly recommended to replace it with your own personal key from <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:underline">themoviedb.org</a>.
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <input id="newtmdbkey" placeholder="Paste your personal TMDB API key" style="flex:1;min-width:200px;padding:7px 10px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:13px">
+        <button id="savetmdbkey" style="background:var(--accent);color:#141922;border-color:var(--accent);font-weight:700;padding:7px 12px;font-size:13px">Save Personal Key</button>
+      </div>
+    </div>` : ''}
+    <p class="meta">Move your list, history and progress to another device. The file also contains your TMDB key, so keep it private.</p>
+    <div class="bk"><button id="exp">Export backup</button><button id="imp">Import backup</button><button id="p2psend">📡 Send to another device</button><button id="p2precv">📥 Receive from another device</button><button id="forgetkey" style="background:#4a2222;border-color:#7a3333">Forget TMDB Key (Logout)</button></div>
+    <input id="impf" type="file" accept=".json,application/json" hidden>
+    <p id="bkmsg" class="meta"></p></div>`;
+  const about = `<div class="row"><h2 class="sec">About</h2>
     <p class="meta">Version ${APP_VERSION}. <span id="upmsg"></span></p>
     <div class="acts">
       <button id="upchk">Check for updates</button> 
@@ -3997,8 +4197,45 @@ function backupBox() {
       <button id="pnbtn">Patch notes</button>
       <button id="keysheet">Shortcuts ?</button>
     </div>
-    <div style="margin-top:24px;text-align:center"><button id="trolladmin" class="troll-admin">Admin Panel v2.7 (Internal)</button></div></div>`;
+    <div style="margin-top:24px;text-align:center"><button id="trolladmin" class="troll-admin">Admin Panel v2.7 (Internal)</button></div>${msg}</div>`;
+  return { general, look, ui, news, data, about };
 }
+function settingsView(t) {
+  if (!key) return showSetup();
+  t = SET_TABS.some(x => x[0] === t) ? t : 'general'; settingsOn = t; try { localStorage.setItem('set_tab', t); } catch (e) {}
+  activeView = { kind: 'settings' }; current = null; updateBackVisibility(); clearHash();
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === 'list'));
+  const P = settingsPanes();
+  app.innerHTML = '<div class="set"><div class="hd"><h2 class="sec">\u2699 Settings</h2></div><div class="settabs" role="tablist">' + SET_TABS.map(x => '<button class="settab' + (x[0] === t ? ' on' : '') + '" data-t="' + x[0] + '" role="tab">' + x[1] + '</button>').join('') + '</div><div class="setpane">' + P[t] + '</div></div>';
+  app.querySelectorAll('.settab').forEach(b => b.onclick = () => settingsView(b.dataset.t));
+  bindBackup(); bindSettings(t);
+  window.scrollTo({ top: 0 });
+}
+function bindSettings(t) {
+  const say = s => { const m = document.getElementById('bkmsg'); if (m) m.textContent = s; };
+  const hw = document.getElementById('hidewtoggle'); if (hw) hw.onchange = () => { try { localStorage.setItem('hidew', hw.checked ? '1' : '0'); } catch (e) {} say('Saved.'); };
+  app.querySelectorAll('.uisel').forEach(s => s.onchange = () => { const o = lsObj('ui_btn'); o[s.dataset.id] = s.value; try { localStorage.setItem('ui_btn', JSON.stringify(o)); } catch (e) {} say('Saved. Applies the next time you open a title.'); });
+  const preset = (id, fn) => { const b = document.getElementById(id); if (b) b.onclick = () => { try { if (fn) localStorage.setItem('ui_btn', JSON.stringify(fn())); else localStorage.removeItem('ui_btn'); } catch (e) {} settingsView('ui'); }; };
+  preset('uipre_def', null);
+  preset('uipre_all', () => { const o = {}; UI_BTNS.forEach(x => { o[x[0]] = 'show'; }); return o; });
+  preset('uipre_min', () => { const o = {}; UI_BTNS.forEach(x => { o[x[0]] = (x[0] === 'fav' || x[0] === 'tramp' || x[0] === 'theater') ? 'show' : 'more'; }); return o; });
+  app.querySelectorAll('.hrow').forEach(cb => cb.onchange = () => { const hidden = [].slice.call(app.querySelectorAll('.hrow')).filter(x => !x.checked).map(x => x.dataset.k); try { localStorage.setItem('home_hide', JSON.stringify(hidden)); } catch (e) {} say('Saved.'); });
+  if (t === 'news') {
+    const onc = document.getElementById('nw_on'); if (onc) onc.onchange = () => { saveNewsCfg({ on: onc.checked }); say('Saved.'); };
+    app.querySelectorAll('.nw_src').forEach(cb => cb.onchange = () => { const p = {}; p[cb.dataset.k] = cb.checked; saveNewsCfg({ src: p }); say('Saved.'); });
+    const cu = document.getElementById('nw_custom'); if (cu) cu.onchange = () => { const v = cu.value.trim(); if (v && !/^https?:\/\//i.test(v)) { say('The feed address must start with http:// or https://'); return; } saveNewsCfg({ custom: v }); say('Saved.'); };
+    const bind = (id, fn) => { const e = document.getElementById(id); if (e) e.onchange = () => { saveNewsCfg(fn(e.value)); say('Saved.'); }; };
+    bind('nw_n', v => ({ n: +v })); bind('nw_fmt', v => ({ fmt: v })); bind('nw_rl', v => ({ rl: v })); bind('nw_al', v => ({ al: v === '1' })); bind('nw_ext', v => ({ ext: v === '1' }));
+    const st = document.getElementById('nw_status');
+    const rf = document.getElementById('nw_refresh'); if (rf) rf.onclick = async () => {
+      st.textContent = 'Loading\u2026'; let res; try { res = await loadNews(getNewsCfg(), true); } catch (e) { res = { items: [], stats: {} }; }
+      const names = Object.keys(res.stats || {}), bad = names.filter(k => !res.stats[k]);
+      st.textContent = res.items.length ? 'Loaded ' + res.items.length + ' item' + (res.items.length === 1 ? '' : 's') + (bad.length ? '. Nothing came back from: ' + bad.join(', ') + '.' : '.') : 'Nothing loaded' + (names.length ? '. These sources returned nothing: ' + names.join(', ') + '.' : '. Tick at least one source.');
+    };
+    const cl = document.getElementById('nw_clear'); if (cl) cl.onclick = () => { try { localStorage.removeItem('news_cache'); } catch (e) {} st.textContent = 'Saved news cleared.'; };
+  }
+}
+
 
 function bindBackup() {
   const exp = document.getElementById('exp'), imp = document.getElementById('imp');
@@ -4020,7 +4257,7 @@ function bindBackup() {
     key = val;
     try { localStorage.setItem('tmdb_key', key); } catch (e) {}
     syncProfileFromTmdbAccount();
-    listView();
+    reView();
     const m = document.getElementById('bkmsg');
     if (m) m.textContent = 'Personal TMDB API key saved!';
   };
@@ -4030,7 +4267,7 @@ function bindBackup() {
   const ud = document.getElementById('unlinkdiscord');
   if (ud) ud.onclick = () => {
     try { localStorage.removeItem('sr_discord_profile'); } catch (e) {}
-    listView();
+    reView();
   };
 
   const fk = document.getElementById('forgetkey');
@@ -4239,7 +4476,7 @@ function bindBackup() {
         if (d.lb && typeof d.lb === 'object' && !Array.isArray(d.lb)) Object.keys(d.lb).forEach(n => mergeLB(n, d.lb[n]));
         if (d.key && !key) { key = String(d.key); try { localStorage.setItem('tmdb_key', key); } catch (e) {} }
         if (d.profile && typeof d.profile === 'object') saveUserProfile(d.profile.name, d.profile.pfp);
-        if (tab === 'list') listView(); else if (key) home();
+        if (activeView.kind === 'settings') reView(); else if (tab === 'list') listView(); else if (key) home();
         say('Backup imported.');
       } catch (e) { say('That file is not a Screenroom backup.'); }
       f.value = '';
@@ -4254,7 +4491,7 @@ function listView() {
     <select id="lfsel"><option value="all"${listFilter==='all'?' selected':''}>All types</option><option value="movie"${listFilter==='movie'?' selected':''}>Movies only</option><option value="tv"${listFilter==='tv'?' selected':''}>Series only</option></select>
     <select id="lfsort"><option value="added"${listSort==='added'?' selected':''}>Date added</option><option value="alpha"${listSort==='alpha'?' selected':''}>Alphabetical</option><option value="rating"${listSort==='rating'?' selected':''}>Rating</option><option value="release"${listSort==='release'?' selected':''}>Release date</option><option value="mine"${listSort==='mine'?' selected':''}>My rating</option></select>
     <select id="lfstat"><option value="all"${listStatus==='all'?' selected':''}>All</option><option value="unwatched"${listStatus==='unwatched'?' selected':''}>Unwatched</option><option value="done"${listStatus==='done'?' selected':''}>Completed</option></select>
-    <button id="csvexp">⬇ CSV</button><button id="csvimp">⬆ Import CSV</button><button id="hidew">${localStorage.getItem('hidew') === '1' ? '🙈 Hiding watched on Home' : '👁 Show watched on Home'}</button><input id="csvfile" type="file" accept=".csv,text/csv" hidden><button id="wrapbtn">🎁 My Wrapped</button><button id="pickrnd">🎲 Pick for me</button><span id="csvstat" class="meta"></span>
+    <details class="tools"><summary>⋯ Tools</summary><div class="toolsin"><button id="csvexp">⬇ CSV</button><button id="csvimp">⬆ Import CSV</button><button id="hidew">${localStorage.getItem('hidew') === '1' ? '🙈 Hiding watched on Home' : '👁 Show watched on Home'}</button><input id="csvfile" type="file" accept=".csv,text/csv" hidden><button id="wrapbtn">🎁 My Wrapped</button><button id="pickrnd">🎲 Pick for me</button><span id="csvstat" class="meta"></span></div></details>
   </div>`;
 
   const filterList = l => {
@@ -4281,10 +4518,10 @@ function listView() {
   const listsHtml = Object.keys(customLists).map(n => sec(esc(n), filterList((customLists[n] || []).filter(x => !isBlocked(x.type, x.id))), `<button class="dellist" data-n="${esc(n)}">Delete list</button>`)).join('');
   const body = statsDashboard() + filterHeader + listsHtml + sec('Favorites', favList) + sec('History', histList, '<button id="clr">Clear history</button>')
     || statsDashboard() + filterHeader + emptyState('Your list is empty', 'Open a title and tap “♡ Add to my list” to keep it here.');
-  app.innerHTML = profileHeader() + body + backupBox();
+  app.innerHTML = profileHeader() + '<div class="setbar"><button id="opensettings">⚙ Settings</button></div>' + body;
   bindProfile();
   bindCards();
-  bindBackup();
+  const os = document.getElementById('opensettings'); if (os) os.onclick = () => openSettings(localStorage.getItem('set_tab') || 'general');
   
   const lfsel = document.getElementById('lfsel');
   if (lfsel) lfsel.onchange = ev => { listFilter = ev.target.value; listView(); };
@@ -4532,6 +4769,7 @@ async function watch(type, id, res = {}, fromBack = false) {
         <div id="castsec"></div>
       </div></div>
       <div id="eps"></div><div id="collection" class="row"></div><div class="sim" id="sim"></div>`;
+    applyUiLayout();
     
     if (directorId) {
       const dl = document.getElementById('dir-link');
@@ -4953,6 +5191,7 @@ document.addEventListener('click', e => {
   const a = e.target.closest('.epc'); if (a && !e.target.closest('button')) a.classList.toggle('rev');
 });
 const PATCHNOTES = [
+  { v: '70', c: ['New Settings page: open My list, then ⚙ Settings. It has tabs (General, Appearance, Interface, News, Account & data, About), and everything that used to be piled at the bottom of My list is now sorted into them. Interface: choose which title-page buttons stay visible, which go behind a single “⋯ More” button, and which are hidden (Minimal / Default / Show everything presets), and hide any Home row. By default the extra tools (poster, sleep, embed test, links…) now sit behind “⋯ More”. News: a new “What’s new” strip on Home shows upcoming movie release dates and the next episodes of your series (TMDB), plus optional headlines from Variety, Deadline, The Hollywood Reporter, Collider, IndieWire, Screen Rant, /Film, The Guardian, Dark Horizons or your own RSS feed. In Settings you choose the sources, how many items, the date style (Dec 18, 18.12 or 12.18) and whether items open the article, the title page, TMDB or nothing. My list: the CSV, Wrapped and other tools are folded under “⋯ Tools”.'] },
   { v: '69', c: ['Fighter fixes. HK no longer opens the pause menu (only Esc, P or Start pause). The touch stick now appears under your finger instead of lower down. Pinch and double-tap zoom are blocked while the game is open. New on-screen D-pad (the default on touch; switch back to the stick in Options, Touch movement). Longer throw range, and a blocked light attack can now cancel into a throw. Snappier feel: shorter hit freeze, faster fireballs, steadier frame rate, and the game lowers its resolution by itself on slow phones. The update check now understands versions like 69.01.'] },
   { v: '68', c: ['New game: Fighter, an arcade fighting game (Games tab, 🥊). Three fighters (Kaito, Mira, Gorn), best of 3 rounds, health and timer, and a super meter. Real command inputs: Spark Ball (↓ ↘ → + punch), Rising Fist (→ ↓ ↘ + punch), Whirl Kick (↓ ↙ ← + kick), Final Blast (↓ ↘ → ↓ ↘ → + punch, full meter), throw (LP + LK), dashes (→ → / ← ←). Combos: light attacks chain into each other and cancel into specials; lows, overheads, blocking by holding back, counter hits and combo damage scaling. Modes: Arcade (5 CPU stages, continue screen, score saved to the Games leaderboard), Versus (2 players on one device with two gamepads, or a gamepad + the keyboard, or a shared keyboard), Training (input display, dummy settings) and a Move List. Controls: keyboard, gamepad (with rumble), or touch with a floating stick, 4 buttons, a throw button and optional shortcut buttons for the specials. On a phone held upright it turns the picture sideways, so turn the phone. Watch Party: challenge a friend with 👥 vs friend (both pick a fighter, the host runs the match, rematch and quit buttons, and the invite pop-up works like Pong). The guest sees the fight a fraction of a second late.'] },
   { v: '67', c: ['New loading screen: the logo, a progress bar and a cinema quote show while the app starts (also in the home-screen app) and fade out once Home is ready.'] },
