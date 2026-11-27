@@ -116,7 +116,7 @@ h2.sec{margin:0 0 12px;font-size:21px}
   .hero h1{font-size:24px}
   .hero p{font-size:14px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
   .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-  #totop{bottom:calc(74px + env(safe-area-inset-bottom));right:14px;padding:8px 14px;font-size:13px}
+  #totop{bottom:calc(112px + env(safe-area-inset-bottom));right:14px;padding:8px 14px;font-size:13px}
 }
 body.theater nav{display:none}
 
@@ -317,6 +317,14 @@ body.frutiger{background:linear-gradient(180deg,#7fcdff 0%,#d6efff 38%,#e8fff2 1
 body.frutiger header{background:rgba(255,255,255,.55);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
 body.frutiger .card,body.frutiger .gcard,body.frutiger .ncard,body.frutiger .epc,body.frutiger .hero{border-color:rgba(255,255,255,.9);box-shadow:0 6px 18px rgba(31,140,200,.25),inset 0 1px 0 #fff}
 body.frutiger nav button.on{background:linear-gradient(180deg,#fff,#c9ecff)}
+/* v84: tablet / wide landscape two-pane title page */
+@media (min-width:1000px) and (orientation:landscape){
+  .watch{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(300px,1fr);grid-auto-flow:row dense;column-gap:22px;align-items:start}
+  .watch>#party-bar,.watch>#party-presence{grid-column:1/-1}
+  .watch>.player-bar,.watch>.player,.watch>#party-chat{grid-column:1}
+  .watch>.icol{grid-column:2;grid-row:span 3;position:sticky;top:76px;max-height:calc(100vh - 96px);overflow:auto;padding-right:6px}
+  body.theater .watch{display:block}
+}
 /* v81: card size, high contrast */
 body.cs-compact .grid{grid-template-columns:repeat(auto-fill,minmax(100px,1fr))}body.cs-compact .rail .card{flex-basis:108px}
 body.cs-large .grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}body.cs-large .rail .card{flex-basis:200px}
@@ -363,7 +371,7 @@ body.hc{font-size:18px}body.hc .meta,body.hc small{color:var(--text)!important;f
 <p class="attr">This product uses the TMDB API but is not endorsed or certified by TMDB. <span id="contact"></span></p>
 
 <script>
-const APP_VERSION = '83';
+const APP_VERSION = '85';
 const IMG = 'https://image.tmdb.org/t/p/';
 const app = document.getElementById('app');
 const q = document.getElementById('q');
@@ -5242,6 +5250,130 @@ async function followInit(hero0, hh) {
   bindCards();
 }
 
+// ----- v84: broader translation (French, Arabic, Spanish) -----
+const DICT = `⚙ Settings|⚙ Réglages|⚙ الإعدادات|⚙ Ajustes
+General|Général|عام|General
+Appearance|Apparence|المظهر|Apariencia
+Interface|Interface|الواجهة|Interfaz
+News|Actualités|الأخبار|Noticias
+Account & data|Compte et données|الحساب والبيانات|Cuenta y datos
+About|À propos|حول|Acerca de
+Language of titles and descriptions|Langue des titres et des descriptions|لغة العناوين والأوصاف|Idioma de títulos y descripciones
+Theme mode|Mode du thème|وضع المظهر|Modo del tema
+Dark mode|Mode sombre|الوضع الداكن|Modo oscuro
+Light mode|Mode clair|الوضع الفاتح|Modo claro
+Accent color|Couleur d’accentuation|لون التمييز|Color de acento
+Themes|Thèmes|السمات|Temas
+Card size|Taille des cartes|حجم البطاقات|Tamaño de las tarjetas
+Export backup|Exporter la sauvegarde|تصدير نسخة احتياطية|Exportar copia
+Import backup|Importer une sauvegarde|استيراد نسخة احتياطية|Importar copia
+Check for updates|Rechercher des mises à jour|التحقق من التحديثات|Buscar actualizaciones
+Share app|Partager l’appli|مشاركة التطبيق|Compartir la app
+Patch notes|Notes de version|ملاحظات الإصدار|Novedades de versión
+Got it|Compris|حسناً|Entendido
+What’s new|Nouveautés|الجديد|Novedades
+📰 What’s new|📰 Nouveautés|📰 الجديد|📰 Novedades
+♡ Add to my list|♡ Ajouter à ma liste|♡ أضف إلى قائمتي|♡ Añadir a mi lista
+♥ In my list|♥ Dans ma liste|♥ في قائمتي|♥ En mi lista
+＋ List|＋ Liste|＋ قائمة|＋ Lista
+🖼 Poster|🖼 Affiche|🖼 الملصق|🖼 Póster
+▶ Trailer|▶ Bande-annonce|▶ الإعلان|▶ Tráiler
+🚫 Not interested|🚫 Pas intéressé|🚫 غير مهتم|🚫 No me interesa
+↩ Show on Home again|↩ Réafficher sur l’accueil|↩ إظهار في الرئيسية مجدداً|↩ Mostrar de nuevo en Inicio
+➕ Party queue|➕ File de la soirée|➕ قائمة الحفلة|➕ Cola de la fiesta
+Share|Partager|مشاركة|Compartir
+😴 Sleep|😴 Minuteur|😴 مؤقت النوم|😴 Dormir
+Theater mode|Mode cinéma|وضع السينما|Modo cine
+Next ▶|Suivant ▶|التالي ▶|Siguiente ▶
+Source:|Source :|المصدر:|Fuente:
+Cast|Distribution|الممثلون|Reparto
+Similar titles|Titres similaires|عناوين مشابهة|Títulos similares
+Seasons|Saisons|المواسم|Temporadas
+✓ Mark season watched|✓ Marquer la saison vue|✓ تعليم الموسم كمشاهد|✓ Marcar temporada vista
+↺ Reset progress|↺ Réinitialiser|↺ إعادة تعيين التقدم|↺ Reiniciar progreso
+Show dropdown|Afficher la liste|عرض القائمة|Mostrar lista
+Show episode grid|Afficher la grille|عرض الشبكة|Mostrar cuadrícula
+See more|Voir plus|عرض المزيد|Ver más
+See less|Voir moins|عرض أقل|Ver menos
+All genres|Tous les genres|كل الأنواع|Todos los géneros
+Popular|Populaires|الأكثر شعبية|Populares
+Top rated|Mieux notés|الأعلى تقييماً|Mejor valoradas
+Newest|Plus récents|الأحدث|Más recientes
+Any length|Toute durée|أي مدة|Cualquier duración
+Any decade|Toute décennie|أي عقد|Cualquier década
+Clear|Effacer|مسح|Borrar
+All types|Tous les types|كل الأنواع|Todos los tipos
+Movies only|Films seulement|أفلام فقط|Solo películas
+Series only|Séries seulement|مسلسلات فقط|Solo series
+Date added|Date d’ajout|تاريخ الإضافة|Fecha de adición
+Alphabetical|Alphabétique|أبجدي|Alfabético
+Release date|Date de sortie|تاريخ الإصدار|Fecha de estreno
+My rating|Ma note|تقييمي|Mi nota
+Unwatched|Non vus|غير مشاهد|Sin ver
+Completed|Terminés|مكتمل|Completados
+Any tag|Toute étiquette|أي وسم|Cualquier etiqueta
+Saved Titles|Titres enregistrés|العناوين المحفوظة|Títulos guardados
+History Count|Historique|عدد السجل|Historial
+Movies watched|Films vus|أفلام شوهدت|Películas vistas
+Series watched|Séries vues|مسلسلات شوهدت|Series vistas
+Day streak|Jours d’affilée|أيام متتالية|Días seguidos
+Clear history|Effacer l’historique|مسح السجل|Borrar historial
+Leaderboard|Classement|لوحة المتصدرين|Clasificación
+Play|Jouer|العب|Jugar
+vs CPU|vs ordinateur|ضد الحاسوب|vs CPU
+👥 vs friend|👥 vs ami|👥 ضد صديق|👥 vs amigo
+Tic-Tac-Toe|Morpion|إكس أو|Tres en raya
+Rhythm|Rythme|الإيقاع|Ritmo
+Fighter|Combat|القتال|Luchador
+Daily word|Mot du jour|كلمة اليوم|Palabra del día
+Emoji movies|Films en émojis|أفلام بالإيموجي|Películas en emojis
+Minesweeper|Démineur|كاسحة الألغام|Buscaminas
+Higher/Lower|Plus/Moins|أعلى/أدنى|Mayor/Menor
+Play alone, or against a friend in your Watch Party.|Jouez seul ou contre un ami dans votre soirée.|العب وحدك أو ضد صديق في حفلتك.|Juega solo o contra un amigo en tu fiesta.
+🏆 Tournament|🏆 Tournoi|🏆 بطولة|🏆 Torneo
+🔊 Sound on|🔊 Son activé|🔊 الصوت يعمل|🔊 Sonido activado
+🔇 Sound off|🔇 Son coupé|🔇 الصوت متوقف|🔇 Sonido desactivado
+🎉 Watch with Friends (Create Discord Link)|🎉 Regarder entre amis (créer un lien Discord)|🎉 شاهد مع الأصدقاء (إنشاء رابط ديسكورد)|🎉 Ver con amigos (crear enlace de Discord)
+End Party|Terminer|إنهاء الحفلة|Terminar fiesta
+Leave Party|Quitter|مغادرة الحفلة|Salir de la fiesta
+📋 Copy Discord Link|📋 Copier le lien Discord|📋 نسخ رابط ديسكورد|📋 Copiar enlace de Discord
+HOSTING PARTY|HÔTE DE LA SOIRÉE|مضيف الحفلة|ANFITRIÓN
+Type a command…|Tapez une commande…|اكتب أمراً…|Escribe un comando…
+Loading…|Chargement…|جارٍ التحميل…|Cargando…
+Continue|Continuer|متابعة|Continuar
+Cancel|Annuler|إلغاء|Cancelar
+Play now|Lire maintenant|شغّل الآن|Reproducir ya`;
+const DX = (() => {
+  const i = { fr: 1, ar: 2, es: 3 }[UIL], o = Object.assign({}, STR[UIL] || {});
+  if (i) DICT.split('\n').forEach(l => { const p = l.split('|'); if (p.length === 4 && p[i]) o[p[0]] = p[i]; });
+  return o;
+})();
+const TR_SKIP = '.card,.ccard,.epc,.scard,.ncard,.calep,.sdrop-item,.hero,.icol h2,.chip,.pn,.cmsg,script,style,textarea';
+function trDom(root) {
+  if (UIL === 'en' || !root) return;
+  const nodes = [];
+  if (root.nodeType === 3) nodes.push(root); else { const wk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); while (wk.nextNode()) nodes.push(wk.currentNode); }
+  nodes.forEach(n => {
+    const t = n.nodeValue.trim(); if (!t || !Object.prototype.hasOwnProperty.call(DX, t)) return;
+    const p = n.parentElement; if (p && p.closest(TR_SKIP)) return;
+    n.nodeValue = n.nodeValue.replace(t, () => DX[t]);
+  });
+  if (root.querySelectorAll) root.querySelectorAll('[placeholder]').forEach(e => { const v = e.getAttribute('placeholder'); if (Object.prototype.hasOwnProperty.call(DX, v)) e.setAttribute('placeholder', DX[v]); });
+}
+if (UIL !== 'en' && STR[UIL]) {
+  trDom(document.body);
+  new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if (n.nodeType === 1 || n.nodeType === 3) trDom(n); }))).observe(document.body, { childList: true, subtree: true });
+}
+
+function soundtrackMenu(c) {
+  if (!c) return;
+  const old = document.getElementById('sndm'); if (old) old.remove();
+  const qs = encodeURIComponent(c.name + ' soundtrack'), L = [['Spotify', 'https://open.spotify.com/search/' + qs], ['YouTube', 'https://www.youtube.com/results?search_query=' + qs], ['YouTube Music', 'https://music.youtube.com/search?q=' + qs], ['Apple Music', 'https://music.apple.com/search?term=' + qs], ['Deezer', 'https://www.deezer.com/search/' + qs]];
+  const m = document.createElement('div'); m.id = 'sndm'; m.className = 'modal'; m.onclick = e => { if (e.target === m) m.remove(); };
+  m.innerHTML = '<div class="box"><div class="hd"><h2 class="sec">\uD83C\uDFB5 Soundtrack</h2><button id="sndx">\u2715</button></div><p class="meta" dir="auto">' + esc(c.name) + '</p>' + L.map(x => '<a href="' + esc(x[1]) + '" target="_blank" rel="noopener noreferrer"><button style="display:block;width:100%;text-align:left;margin:6px 0;padding:11px 14px">' + esc(x[0]) + ' \u2197</button></a>').join('') + '</div>';
+  document.body.appendChild(m); m.querySelector('#sndx').onclick = () => m.remove();
+}
+
 function statsDashboard() {
   const cw = getCW();
   const fav = lsGet('fav');
@@ -5263,7 +5395,7 @@ const SET_TABS = [['general', 'General'], ['look', 'Appearance'], ['ui', 'Interf
 const UI_BTNS = [
   ['fav', 'Add to my list', 'show'], ['addlist', 'Add to a custom list', 'show'], ['tramp', 'Trailer', 'show'], ['theater', 'Theater mode', 'show'], ['share', 'Share', 'show'],
   ['noint', 'Not interested', 'more'], ['sleepbtn', 'Sleep timer', 'more'], ['postbtn', 'Poster (image link)', 'more'], ['customposterbtn', 'Custom poster (saved list)', 'more'],
-  ['copylink', 'Copy deep link', 'more'], ['sandbtn', 'Embed test', 'more'], ['lnk_imdb', 'IMDb link', 'more'], ['lnk_rt', 'Rotten Tomatoes link', 'more'], ['lnk_tmdb', 'TMDB link', 'more'], ['nightbtn', 'Plan a movie night', 'more'], ['cmpbtn', 'Compare with another title', 'more']
+  ['copylink', 'Copy deep link', 'more'], ['sandbtn', 'Embed test', 'more'], ['lnk_imdb', 'IMDb link', 'more'], ['lnk_rt', 'Rotten Tomatoes link', 'more'], ['lnk_tmdb', 'TMDB link', 'more'], ['nightbtn', 'Plan a movie night', 'more'], ['cmpbtn', 'Compare with another title', 'more'], ['sndbtn', 'Soundtrack search', 'show']
 ];
 const HOME_ROWS = [['follow', 'People you follow'], ['because', 'Because you watched…'], ['gems', 'Hidden gems'], ['nights', 'Movie nights'], ['frate', 'Friends rated'], ['news', 'News & release radar'], ['picked', 'Picked for you'], ['moods', 'Mood buttons'], ['daily', 'Daily challenge'], ['day', 'Trending today'], ['week', 'Trending this week'], ['now', 'In theaters now'], ['ps', 'Popular series'], ['pm', 'Popular movies'], ['tm', 'Top rated movies'], ['ts', 'Top rated series']];
 const NEWS_SRC = [
@@ -5641,7 +5773,7 @@ function bindBackup() {
   const exp = document.getElementById('exp'), imp = document.getElementById('imp');
   const f = document.getElementById('impf');
   const ls = document.getElementById('lang');
-  if (ls) ls.onchange = () => { lang = ls.value; try { localStorage.setItem('lang', lang); } catch (e) {} genres = {}; const m = document.getElementById('bkmsg'); if (m) m.textContent = 'Language saved. It applies to the next page you open.'; };
+  if (ls) ls.onchange = () => { lang = ls.value; try { localStorage.setItem('lang', lang); } catch (e) {} genres = {}; const m = document.getElementById('bkmsg'); if (m) m.textContent = 'Language saved. Reloading\u2026'; setTimeout(() => location.reload(), 600); };
   
   const bi = document.getElementById('brandinput');
   if (bi) bi.oninput = () => {
@@ -6189,6 +6321,7 @@ async function watch(type, id, res = {}, fromBack = false) {
           <button id="share">Share</button>
           <button id="nightbtn">🍿 Plan a movie night</button>
           <button id="cmpbtn">⚖ Compare</button>
+          <button id="sndbtn">🎵 Soundtrack</button>
           <button id="sandbtn">🧪 Embed test</button>
           <button id="sleepbtn">😴 Sleep</button>
           <button id="theater">Theater mode</button>
@@ -6288,6 +6421,7 @@ async function watch(type, id, res = {}, fromBack = false) {
     document.getElementById('sandbtn').onclick = showSandbox;
     document.getElementById('nightbtn').onclick = () => planNight(current);
     document.getElementById('cmpbtn').onclick = () => compareTitle(current);
+    document.getElementById('sndbtn').onclick = () => soundtrackMenu(current);
     const rcb = document.getElementById('recapbtn'); if (rcb) rcb.onclick = () => recapCard(rcb);
     document.getElementById('sleepbtn').onclick = ev => {
       const btn = ev.currentTarget; clearTimeout(window.__sleepT);
@@ -6642,6 +6776,8 @@ document.addEventListener('click', e => {
   const a = e.target.closest('.epc'); if (a && !e.target.closest('button')) a.classList.toggle('rev');
 });
 const PATCHNOTES = [
+  { v: '85', c: ['New 🎵 Soundtrack button on title pages: one tap opens a search for the movie or series soundtrack on Spotify, YouTube, YouTube Music, Apple Music or Deezer (it opens in your music app if you have it).'] },
+  { v: '84', c: ['iPhone: the ↑ Top button now sits higher, clear of the bottom menu bar. Tablets and wide landscape screens: title pages use two panes, with the player on the left and the title details staying visible on the right while you scroll the episodes. Translation: with the language set to Français, العربية or Español, many more screens are translated (Settings, title page buttons, filters, My list, Games, Watch Party). Changing the language now reloads the app so it applies right away. Titles, descriptions and some rarely used messages stay in their original language.'] },
   { v: '83', c: ['Big update. Profiles: Settings → Account & data lets you create several profiles (family), each with its own list, history, ratings, progress, notes and name, and switch between them. 🎞 Year in review (My list → ⋯ Tools): swipeable story cards of your year, with a shareable image. 🎬 Sagas: your movie franchises with how many you watched and the next one to see. 🔗 Share list link: a link that shows your list to anyone, who can add it all to their own list. ⚖ Compare button on title pages (under ⋯ More): two titles side by side. Follow actors and directors from their page (☆ Follow); Home gets a row with their recent and upcoming titles. Tap a studio or network logo on a title page to see its popular titles. Series cards in My list show a progress bar, and a series that has ended is marked completed once you have watched every episode. Seasonal themes (Ramadan, Halloween, winter holidays) switch automatically if you turn them on in Settings → Appearance. Settings → General: pick your country for cinema releases and upcoming dates. Light translation: with the language set to Français, العربية (right-to-left) or Español, the menu, search box, Home rows, Continue watching, Favorites and History are translated.'] },
   { v: '82', c: ['New on title pages: how many times you watched it and the date of the last time (the ＋ 1 button counts a rewatch), and a tag (Must-watch, Someday, Rewatch) that you can filter by in My list. New decade filter (Movies and Series tabs). New “What to watch?” button on Home (also in Ctrl+K): three quick questions, three picks. Rate each episode with 1 to 5 stars (tap the ☆ on an episode card). These are included in your backups.'] },
   { v: '81', c: ['A batch of small features. Movies tab: new length filter (under 90 min, 2 h, 2 h 30). Settings → Appearance: card size (compact, normal, large) and a high-contrast mode with larger text and bigger buttons. Title pages: 📝 private notes (saved on your device and included in backups). Autoplay now asks “Still watching?” after 3 episodes in a row. Press Ctrl+K (or Cmd+K) for a command palette to jump anywhere or start a game. The weekly calendar has a 📅 .ics button to add the week’s episodes to your calendar app. A backup reminder appears on Home every 2 weeks. Home: new “Because you watched…” and 💎 Hidden gems rows (both can be hidden in Settings → Interface).'] },
